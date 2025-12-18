@@ -1,6 +1,8 @@
 # Build Stage
 FROM node:20-alpine AS builder
 
+ARG BUILD_MODE=production
+
 WORKDIR /app
 
 # Copy package files
@@ -13,7 +15,7 @@ RUN npm ci
 COPY . .
 
 # Build application
-RUN npm run build
+RUN npm run build -- --mode ${BUILD_MODE}
 
 # Production Stage
 FROM nginx:alpine

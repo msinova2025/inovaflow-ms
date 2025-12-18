@@ -1,0 +1,43 @@
+stages:
+  - build
+  - webhook
+
+.rule_publish:
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^(prd|hom|dev)$/
+
+.configuration_variables_common: &configuration_variables_common
+  - export IMAGE="${HARBOR}/${HARBOR_PROJ}/$(echo ${CI_PROJECT_NAME} | cut -d "-" -f 1).${CI_COMMIT_BRANCH}.$(echo $CI_PROJECT_NAME | cut -d "-" -f2-)${IMAGE_VERSION}"
+
+#-------------------------------------------------------------------------------------
+# Build steps
+#-------------------------------------------------------------------------------------
+build:
+  stage: build
+  extends:
+    - .rule_publish
+  before_script:
+    - *configuration_variables_common
+  image:
+    name: harbor.sgi.ms.gov.br/devops/kaniko:latest-debug
+    entrypoint: [""]
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${DOCKERFILE}"
+      --destination "${IMAGE}:${CI_PIPELINE_IID}"
+      --build-arg "BUILD_MODE=${CI_COMMIT_BRANCH}"
+
+webhook:
+  image: harbor.sgi.ms.gov.br/devops/curlimages-curl:7.81.0
+  stage: webhook
+  extends:
+    - .rule_publish
+  script:
+    - >
+      curl -o /dev/null -s -w "%{http_code}\n" -k
+      -X POST --fail 
+      -F token=${TOKEN_GITLAB} 
+      -F "ref=${CI_COMMIT_BRANCH}" 
+      -F "variables[tag]=${CI_PIPELINE_IID}" 
+      https://gitlabs.ms.gov.br/api/v4/projects/${ID_GITLAB}/trigger/pipeline
