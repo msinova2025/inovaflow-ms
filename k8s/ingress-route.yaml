@@ -11,6 +11,7 @@ spec:
     - websecure
   routes:
   - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/`)
+    priority: 10
     kind: Rule
     services:
     - name: K0418-prd-inovaflow-v1
