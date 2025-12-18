@@ -13,82 +13,63 @@ O MS INOVA MAIS é uma plataforma que conecta desafios de inovação com soluç�
 - Vite
 - Tailwind CSS
 - shadcn/ui
-- Supabase (Backend)
+- Node.js (Backend Próprio)
+- PostgreSQL (Banco de Dados)
 
 ## Requisitos
 
-- Node.js 18+
-- npm ou bun
+- Node.js 20+
+- PostgreSQL 16
+- npm
 
 ## Instalação
 
 ```bash
 # Clone o repositório
-git clone <URL_DO_REPOSITORIO>
+git clone <URL_DO_GITLAB>
 
-# Acesse o diretório
-cd ms-inova-mais
-
-# Instale as dependências
+# Instale as dependências do Frontend
 npm install
 
-# Configure as variáveis de ambiente
-# Copie o .env.example para .env e preencha as variáveis
-cp .env.example .env
-
-# Inicie o servidor de desenvolvimento
-npm run dev
+# Instale as dependências do Backend
+cd backend
+npm install
 ```
 
-## Variáveis de Ambiente
+## Configuração Local
 
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-
-```env
-VITE_SUPABASE_PROJECT_ID=seu_project_id
-VITE_SUPABASE_PUBLISHABLE_KEY=sua_anon_key
-VITE_SUPABASE_URL=sua_url_supabase
-```
+1.  **Backend**: Configure o banco de dados no arquivo `backend/.env` (veja `backend/.env.example`).
+2.  **Frontend**: Configure a URL da API no arquivo `.env` (veja `.env.example`).
 
 ## Scripts Disponíveis
 
-- `npm run dev` - Inicia o servidor de desenvolvimento
-- `npm run build` - Gera a build de produção
-- `npm run preview` - Visualiza a build de produção localmente
+- `npm run dev` - Inicia o Frontend em modo desenvolvimento
+- `npm start` (no backend) - Inicia a API
+- `npm run build` - Gera a build de produção do Frontend
 
 ## Estrutura do Projeto
 
 ```
-src/
-├── assets/        # Imagens e recursos estáticos
-├── components/    # Componentes React
-│   ├── admin/     # Componentes do painel administrativo
-│   ├── layout/    # Header, Footer e layouts
-│   └── ui/        # Componentes de UI (shadcn)
-├── hooks/         # Custom hooks
-├── integrations/  # Integrações (Supabase)
-├── lib/           # Utilitários
-├── pages/         # Páginas da aplicação
-└── index.css      # Estilos globais
+.
+├── backend/       # API Node.js/Express
+├── database/      # Scripts SQL e Schema
+├── k8s/           # Manifestos Kubernetes (SETDIG)
+├── src/           # Frontend React
+└── public/        # Recursos estáticos
 ```
 
-## Deploy
+## Deploy (SETDIG)
 
-### Vercel
+O deploy é automatizado via GitLab CI/CD nas branches:
+- `hom`: Ambiente de Homologação
+- `prd`: Ambiente de Produção
 
-1. Importe o repositório na Vercel
-2. Configure as variáveis de ambiente no painel da Vercel
-3. Deploy automático a cada push
+### Variáveis Necessárias (Kubernetes Secrets)
 
-### Variáveis na Vercel
-
-Configure as seguintes variáveis em Settings > Environment Variables:
-
-| Variável | Descrição |
+| Secret | Descrição |
 |----------|-----------|
-| `VITE_SUPABASE_PROJECT_ID` | ID do projeto Supabase |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave anônima do Supabase |
-| `VITE_SUPABASE_URL` | URL do projeto Supabase |
+| `K0420-db-credentials` | Host, User, Password e Database do Postgres |
+| `K0420-jwt-secret` | Chave secreta para tokens JWT |
 
 ## Licença
 

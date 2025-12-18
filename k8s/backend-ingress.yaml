@@ -15,6 +15,7 @@ spec:
     - websecure
   routes:
   - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/api`)
+    priority: 100
     kind: Rule
     services:
     - name: k0420-prd-ms-inova-mais-back
@@ -22,6 +23,7 @@ spec:
   
   # Public documentation endpoint (no JWT required)
   - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/api/swagger`)
+    priority: 110
     kind: Rule
     services:
     - name: k0420-prd-ms-inova-mais-back
