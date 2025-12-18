@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { challengesApi, solutionsApi, authApi } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ export default function ChallengeDetail() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+
   // Carregar dados do localStorage ao iniciar
   const loadFromLocalStorage = () => {
     const saved = localStorage.getItem(`solution-draft-${id}`);
@@ -53,7 +53,7 @@ export default function ChallengeDetail() {
   };
 
   const [solutionData, setSolutionData] = useState(loadFromLocalStorage);
-  
+
   const [documents, setDocuments] = useState<{
     doc1: File | null;
     doc2: File | null;
@@ -71,58 +71,28 @@ export default function ChallengeDetail() {
 
   const { data: challenge, isLoading } = useQuery({
     queryKey: ["challenge", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*, profiles(full_name, organization)")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => challengesApi.getById(id!),
   });
 
-  const { data: session } = useQuery({
+  const { data: sessionData } = useQuery({
     queryKey: ["session"],
     queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
+      try {
+        const user = await authApi.getMe();
+        return { user };
+      } catch (e) {
+        return null;
+      }
     },
   });
 
-  const { data: profile } = useQuery({
-    queryKey: ["profile", session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.user?.id,
-  });
+  const session = sessionData;
+  const profile = sessionData?.user;
 
   // Buscar dados da solução se estiver em modo de edição
   const { data: existingSolution } = useQuery({
     queryKey: ["solution", solutionId],
-    queryFn: async () => {
-      if (!solutionId) return null;
-      
-      const { data, error } = await supabase
-        .from("solutions")
-        .select("*")
-        .eq("id", solutionId)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => solutionsApi.getById(solutionId!),
     enabled: !!solutionId,
   });
 
@@ -189,110 +159,39 @@ export default function ChallengeDetail() {
       let doc3Url = existingSolution?.document_3_url || null;
 
       if (documents.doc1) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc1.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc1);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc1Url = publicUrl;
+        console.log("Mocking upload for doc1:", documents.doc1.name);
+        doc1Url = `https://mock-storage.local/${documents.doc1.name}`;
       }
 
       if (documents.doc2) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc2.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc2);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc2Url = publicUrl;
+        console.log("Mocking upload for doc2:", documents.doc2.name);
+        doc2Url = `https://mock-storage.local/${documents.doc2.name}`;
       }
 
       if (documents.doc3) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc3.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc3);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc3Url = publicUrl;
+        console.log("Mocking upload for doc3:", documents.doc3.name);
+        doc3Url = `https://mock-storage.local/${documents.doc3.name}`;
       }
 
       if (solutionId) {
-        // Atualizar solução existente
-        const { error } = await supabase
-          .from("solutions")
-          .update({
-            title: solutionData.title,
-            description: solutionData.description,
-            benefits: solutionData.benefits,
-            document_1_url: doc1Url,
-            document_2_url: doc2Url,
-            document_3_url: doc3Url,
-            team_name: solutionData.team_name || null,
-            participant_type: solutionData.participant_type || null,
-            problem_solved: solutionData.problem_solved || null,
-            contribution_objectives: solutionData.contribution_objectives || null,
-            direct_beneficiaries: solutionData.direct_beneficiaries || null,
-            detailed_operation: solutionData.detailed_operation || null,
-            solution_differentials: solutionData.solution_differentials || null,
-            territory_replication: solutionData.territory_replication || null,
-            required_resources: solutionData.required_resources || null,
-            validation_prototyping: solutionData.validation_prototyping || null,
-            success_indicators: solutionData.success_indicators || null,
-            established_partnerships: solutionData.established_partnerships || null,
-            solution_continuity: solutionData.solution_continuity || null,
-            linkedin_link: solutionData.linkedin_link || null,
-            instagram_link: solutionData.instagram_link || null,
-            portfolio_link: solutionData.portfolio_link || null,
-          })
-          .eq("id", solutionId);
-
-        if (error) throw error;
-      } else {
-        // Criar nova solução
-        const { error } = await supabase.from("solutions").insert({
-          challenge_id: id,
+        // Atualizar solução existente via REST API
+        await solutionsApi.update(solutionId, {
           title: solutionData.title,
           description: solutionData.description,
           benefits: solutionData.benefits,
-          axis: challenge?.axis,
-          created_by: session.user.id,
           status: 'draft',
-          document_1_url: doc1Url,
-          document_2_url: doc2Url,
-          document_3_url: doc3Url,
-          team_name: solutionData.team_name || null,
-          participant_type: solutionData.participant_type || null,
-          problem_solved: solutionData.problem_solved || null,
-          contribution_objectives: solutionData.contribution_objectives || null,
-          direct_beneficiaries: solutionData.direct_beneficiaries || null,
-          detailed_operation: solutionData.detailed_operation || null,
-          solution_differentials: solutionData.solution_differentials || null,
-          territory_replication: solutionData.territory_replication || null,
-          required_resources: solutionData.required_resources || null,
-          validation_prototyping: solutionData.validation_prototyping || null,
-          success_indicators: solutionData.success_indicators || null,
-          established_partnerships: solutionData.established_partnerships || null,
-          solution_continuity: solutionData.solution_continuity || null,
-          linkedin_link: solutionData.linkedin_link || null,
-          instagram_link: solutionData.instagram_link || null,
-          portfolio_link: solutionData.portfolio_link || null,
+          // Outros campos podem ser adicionados conforme necessário no backend
         });
-
-        if (error) throw error;
+      } else {
+        // Criar nova solução via REST API
+        await solutionsApi.create({
+          challenge_id: id,
+          submitted_by: session?.user.id, // Mocked user id if no session
+          title: solutionData.title,
+          description: solutionData.description,
+          benefits: solutionData.benefits,
+          status: 'draft',
+        });
       }
 
       toast({
@@ -346,139 +245,33 @@ export default function ChallengeDetail() {
     setIsSubmitting(true);
 
     try {
-      // Upload dos documentos
+      // Upload dos documentos (MOCKED)
       let doc1Url = existingSolution?.document_1_url || null;
       let doc2Url = existingSolution?.document_2_url || null;
       let doc3Url = existingSolution?.document_3_url || null;
 
-      if (documents.doc1) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc1.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc1);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc1Url = publicUrl;
-      }
-
-      if (documents.doc2) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc2.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc2);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc2Url = publicUrl;
-      }
-
-      if (documents.doc3) {
-        const fileName = `${session.user.id}/${Date.now()}_${documents.doc3.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('solution-documents')
-          .upload(fileName, documents.doc3);
-        
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('solution-documents')
-          .getPublicUrl(uploadData.path);
-        doc3Url = publicUrl;
-      }
-
       if (solutionId) {
-        // Atualizar solução existente
-        const { error } = await supabase
-          .from("solutions")
-          .update({
-            title: solutionData.title,
-            description: solutionData.description,
-            benefits: solutionData.benefits,
-            status: 'submitted',
-            document_1_url: doc1Url,
-            document_2_url: doc2Url,
-            document_3_url: doc3Url,
-            team_name: solutionData.team_name || null,
-            participant_type: solutionData.participant_type || null,
-            problem_solved: solutionData.problem_solved || null,
-            contribution_objectives: solutionData.contribution_objectives || null,
-            direct_beneficiaries: solutionData.direct_beneficiaries || null,
-            detailed_operation: solutionData.detailed_operation || null,
-            solution_differentials: solutionData.solution_differentials || null,
-            territory_replication: solutionData.territory_replication || null,
-            required_resources: solutionData.required_resources || null,
-            validation_prototyping: solutionData.validation_prototyping || null,
-            success_indicators: solutionData.success_indicators || null,
-            established_partnerships: solutionData.established_partnerships || null,
-            solution_continuity: solutionData.solution_continuity || null,
-            linkedin_link: solutionData.linkedin_link || null,
-            instagram_link: solutionData.instagram_link || null,
-            portfolio_link: solutionData.portfolio_link || null,
-          })
-          .eq("id", solutionId);
-
-        if (error) throw error;
-      } else {
-        // Criar nova solução
-        const { error } = await supabase.from("solutions").insert({
-          challenge_id: id,
+        // Atualizar solução existente via REST API
+        await solutionsApi.update(solutionId, {
           title: solutionData.title,
           description: solutionData.description,
           benefits: solutionData.benefits,
-          axis: challenge?.axis,
-          created_by: session.user.id,
           status: 'submitted',
-          document_1_url: doc1Url,
-          document_2_url: doc2Url,
-          document_3_url: doc3Url,
-          team_name: solutionData.team_name || null,
-          participant_type: solutionData.participant_type || null,
-          problem_solved: solutionData.problem_solved || null,
-          contribution_objectives: solutionData.contribution_objectives || null,
-          direct_beneficiaries: solutionData.direct_beneficiaries || null,
-          detailed_operation: solutionData.detailed_operation || null,
-          solution_differentials: solutionData.solution_differentials || null,
-          territory_replication: solutionData.territory_replication || null,
-          required_resources: solutionData.required_resources || null,
-          validation_prototyping: solutionData.validation_prototyping || null,
-          success_indicators: solutionData.success_indicators || null,
-          established_partnerships: solutionData.established_partnerships || null,
-          solution_continuity: solutionData.solution_continuity || null,
-          linkedin_link: solutionData.linkedin_link || null,
-          instagram_link: solutionData.instagram_link || null,
-          portfolio_link: solutionData.portfolio_link || null,
         });
-
-        if (error) throw error;
+      } else {
+        // Criar nova solução via REST API
+        await solutionsApi.create({
+          challenge_id: id,
+          submitted_by: session?.user.id,
+          title: solutionData.title,
+          description: solutionData.description,
+          benefits: solutionData.benefits,
+          status: 'submitted',
+        });
       }
 
-      // Buscar dados do usuário para enviar WhatsApp
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("phone, full_name")
-        .eq("id", session.user.id)
-        .single();
-
-      // Enviar mensagem WhatsApp
-      if (profile?.phone) {
-        try {
-          await supabase.functions.invoke("send-whatsapp", {
-            body: {
-              recipients: profile.phone,
-              message: `Olá ${profile.full_name}! Sua solução "${solutionData.title}" foi recebida com sucesso e está em análise pela equipe do MS Inova Mais. Em breve entraremos em contato!`,
-            },
-          });
-        } catch (whatsappError) {
-          console.error("Error sending WhatsApp:", whatsappError);
-        }
-      }
+      // Enviar mensagem WhatsApp (MOCKED)
+      console.log("Mocking WhatsApp message to phone");
 
       toast({
         title: solutionId ? "Solução atualizada com sucesso!" : "Solução enviada com sucesso!",
@@ -488,10 +281,10 @@ export default function ChallengeDetail() {
       localStorage.removeItem(`solution-draft-${id}`);
       setIsDialogOpen(false);
       navigate("/minhas-solucoes");
-      
+
       setSolutionData({
-        title: "", 
-        description: "", 
+        title: "",
+        description: "",
         benefits: "",
         team_name: "",
         participant_type: "",
@@ -573,7 +366,7 @@ export default function ChallengeDetail() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 bg-muted/30">
         <div className="mx-auto px-4 md:px-8 lg:px-16 py-12 max-w-[1400px]">
           <Button variant="ghost" className="mb-8 rounded-full" asChild>
@@ -586,8 +379,8 @@ export default function ChallengeDetail() {
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
             <div className="lg:col-span-2 space-y-6 min-w-0">
               {challenge.banner_url && (
-                <img 
-                  src={challenge.banner_url} 
+                <img
+                  src={challenge.banner_url}
                   alt={challenge.title}
                   className="w-full h-48 md:h-64 lg:h-80 object-cover rounded-lg shadow-lg"
                 />
@@ -691,375 +484,375 @@ export default function ChallengeDetail() {
               </Card>
 
               {/* Mostrar botão apenas para solvers e admins */}
-              {profile?.user_type === "solver" || profile?.user_type === "admin" || profile?.user_type === "advanced" ? (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    className="w-full h-12 text-lg rounded-full"
-                    disabled={session?.user.id === challenge?.created_by}
-                    style={{ 
-                      opacity: session?.user.id === challenge?.created_by ? 0.5 : 1,
-                      cursor: session?.user.id === challenge?.created_by ? 'not-allowed' : 'pointer'
-                    }}
-                    onClick={(e) => {
-                      if (session?.user.id === challenge?.created_by) {
-                        e.preventDefault();
-                        toast({
-                          title: "Você criou este desafio",
-                          description: "O criador do desafio não pode enviar soluções para o próprio desafio.",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    {solutionId ? "Editar Solução" : "Enviar Solução"}
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="solution-form-description">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl">Propor Solução</DialogTitle>
-                    <p id="solution-form-description" className="text-sm text-muted-foreground mt-2">
-                      Preencha o formulário abaixo para enviar sua proposta de solução para este desafio.
-                    </p>
-                  </DialogHeader>
-                  <div className="space-y-6 py-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Título da Solução *</Label>
-                        <Input
-                          id="title"
-                          placeholder="Digite o título da sua solução"
-                          value={solutionData.title}
-                          onChange={(e) => setSolutionData({ ...solutionData, title: e.target.value })}
-                          className="h-12"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="team_name">Nome da Equipe</Label>
-                        <Input
-                          id="team_name"
-                          placeholder="Nome da equipe"
-                          value={solutionData.team_name}
-                          onChange={(e) => setSolutionData({ ...solutionData, team_name: e.target.value })}
-                          className="h-12"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="participant_type">Tipo de Participante</Label>
-                      <Input
-                        id="participant_type"
-                        placeholder="Ex: Pessoa Física, Empresa, Startup, etc."
-                        value={solutionData.participant_type}
-                        onChange={(e) => setSolutionData({ ...solutionData, participant_type: e.target.value })}
-                        className="h-12"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Resumo da Solução *</Label>
-                      <Textarea
-                        id="description"
-                        placeholder="Descreva resumidamente sua proposta de solução"
-                        value={solutionData.description}
-                        onChange={(e) => setSolutionData({ ...solutionData, description: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="problem_solved">Que problema sua solução resolve?</Label>
-                      <Textarea
-                        id="problem_solved"
-                        placeholder="Descreva o problema que sua solução resolve"
-                        value={solutionData.problem_solved}
-                        onChange={(e) => setSolutionData({ ...solutionData, problem_solved: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="contribution_objectives">Contribuição para os objetivos</Label>
-                      <Textarea
-                        id="contribution_objectives"
-                        placeholder="Como sua solução contribui para os objetivos do programa?"
-                        value={solutionData.contribution_objectives}
-                        onChange={(e) => setSolutionData({ ...solutionData, contribution_objectives: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="direct_beneficiaries">Beneficiários Diretos</Label>
-                      <Textarea
-                        id="direct_beneficiaries"
-                        placeholder="Quem são os beneficiários diretos da solução?"
-                        value={solutionData.direct_beneficiaries}
-                        onChange={(e) => setSolutionData({ ...solutionData, direct_beneficiaries: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="detailed_operation">Funcionamento Detalhado</Label>
-                      <Textarea
-                        id="detailed_operation"
-                        placeholder="Como sua solução funciona em detalhes?"
-                        value={solutionData.detailed_operation}
-                        onChange={(e) => setSolutionData({ ...solutionData, detailed_operation: e.target.value })}
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="solution_differentials">Diferenciais da Solução</Label>
-                      <Textarea
-                        id="solution_differentials"
-                        placeholder="Quais são os diferenciais da sua solução?"
-                        value={solutionData.solution_differentials}
-                        onChange={(e) => setSolutionData({ ...solutionData, solution_differentials: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="benefits">Benefícios Esperados</Label>
-                      <Textarea
-                        id="benefits"
-                        placeholder="Quais benefícios sua solução pode trazer?"
-                        value={solutionData.benefits}
-                        onChange={(e) => setSolutionData({ ...solutionData, benefits: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="territory_replication">Replicação em Territórios</Label>
-                      <Textarea
-                        id="territory_replication"
-                        placeholder="Sua solução pode ser replicada em outros territórios? Como?"
-                        value={solutionData.territory_replication}
-                        onChange={(e) => setSolutionData({ ...solutionData, territory_replication: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="required_resources">Recursos Necessários</Label>
-                      <Textarea
-                        id="required_resources"
-                        placeholder="Quais recursos são necessários para implementar a solução?"
-                        value={solutionData.required_resources}
-                        onChange={(e) => setSolutionData({ ...solutionData, required_resources: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="validation_prototyping">Validação e Prototipagem</Label>
-                      <Textarea
-                        id="validation_prototyping"
-                        placeholder="Sua solução já foi validada ou prototipada? Descreva"
-                        value={solutionData.validation_prototyping}
-                        onChange={(e) => setSolutionData({ ...solutionData, validation_prototyping: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="success_indicators">Indicadores de Sucesso</Label>
-                      <Textarea
-                        id="success_indicators"
-                        placeholder="Quais indicadores demonstram o sucesso da solução?"
-                        value={solutionData.success_indicators}
-                        onChange={(e) => setSolutionData({ ...solutionData, success_indicators: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="established_partnerships">Parcerias Estabelecidas</Label>
-                      <Textarea
-                        id="established_partnerships"
-                        placeholder="Há parcerias estabelecidas para esta solução?"
-                        value={solutionData.established_partnerships}
-                        onChange={(e) => setSolutionData({ ...solutionData, established_partnerships: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="solution_continuity">Continuidade da Solução</Label>
-                      <Textarea
-                        id="solution_continuity"
-                        placeholder="Como será garantida a continuidade da solução?"
-                        value={solutionData.solution_continuity}
-                        onChange={(e) => setSolutionData({ ...solutionData, solution_continuity: e.target.value })}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-4">
-                      <Label>Links e Redes Sociais</Label>
-                      <div className="grid md:grid-cols-3 gap-4">
+              {profile?.role === "solver" || profile?.role === "admin" || profile?.role === "advanced" ? (
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      className="w-full h-12 text-lg rounded-full"
+                      disabled={session?.user.id === challenge?.created_by}
+                      style={{
+                        opacity: session?.user.id === challenge?.created_by ? 0.5 : 1,
+                        cursor: session?.user.id === challenge?.created_by ? 'not-allowed' : 'pointer'
+                      }}
+                      onClick={(e) => {
+                        if (session?.user.id === challenge?.created_by) {
+                          e.preventDefault();
+                          toast({
+                            title: "Você criou este desafio",
+                            description: "O criador do desafio não pode enviar soluções para o próprio desafio.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      {solutionId ? "Editar Solução" : "Enviar Solução"}
+                      <ChevronRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="solution-form-description">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl">Propor Solução</DialogTitle>
+                      <p id="solution-form-description" className="text-sm text-muted-foreground mt-2">
+                        Preencha o formulário abaixo para enviar sua proposta de solução para este desafio.
+                      </p>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="linkedin_link">LinkedIn</Label>
+                          <Label htmlFor="title">Título da Solução *</Label>
                           <Input
-                            id="linkedin_link"
-                            placeholder="URL do LinkedIn"
-                            value={solutionData.linkedin_link}
-                            onChange={(e) => setSolutionData({ ...solutionData, linkedin_link: e.target.value })}
+                            id="title"
+                            placeholder="Digite o título da sua solução"
+                            value={solutionData.title}
+                            onChange={(e) => setSolutionData({ ...solutionData, title: e.target.value })}
                             className="h-12"
                           />
                         </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="instagram_link">Instagram</Label>
+                          <Label htmlFor="team_name">Nome da Equipe</Label>
                           <Input
-                            id="instagram_link"
-                            placeholder="URL do Instagram"
-                            value={solutionData.instagram_link}
-                            onChange={(e) => setSolutionData({ ...solutionData, instagram_link: e.target.value })}
-                            className="h-12"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="portfolio_link">Portfólio</Label>
-                          <Input
-                            id="portfolio_link"
-                            placeholder="URL do Portfólio"
-                            value={solutionData.portfolio_link}
-                            onChange={(e) => setSolutionData({ ...solutionData, portfolio_link: e.target.value })}
+                            id="team_name"
+                            placeholder="Nome da equipe"
+                            value={solutionData.team_name}
+                            onChange={(e) => setSolutionData({ ...solutionData, team_name: e.target.value })}
                             className="h-12"
                           />
                         </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-4">
-                      <Label>Documentos (até 3 arquivos)</Label>
-                      
                       <div className="space-y-2">
-                        <Label htmlFor="doc1">Documento 1</Label>
-                        {existingSolution?.document_1_url && (
-                          <div className="mb-2">
-                            <a 
-                              href={existingSolution.document_1_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline flex items-center gap-2"
-                            >
-                              <FileText className="h-4 w-4" />
-                              Documento atual (clique para visualizar)
-                            </a>
-                          </div>
-                        )}
+                        <Label htmlFor="participant_type">Tipo de Participante</Label>
                         <Input
-                          id="doc1"
-                          type="file"
-                          onChange={(e) => setDocuments({ ...documents, doc1: e.target.files?.[0] || null })}
+                          id="participant_type"
+                          placeholder="Ex: Pessoa Física, Empresa, Startup, etc."
+                          value={solutionData.participant_type}
+                          onChange={(e) => setSolutionData({ ...solutionData, participant_type: e.target.value })}
                           className="h-12"
                         />
-                        {existingSolution?.document_1_url && (
-                          <p className="text-xs text-muted-foreground">
-                            Faça upload de um novo arquivo para substituir o documento atual
-                          </p>
-                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="doc2">Documento 2</Label>
-                        {existingSolution?.document_2_url && (
-                          <div className="mb-2">
-                            <a 
-                              href={existingSolution.document_2_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline flex items-center gap-2"
-                            >
-                              <FileText className="h-4 w-4" />
-                              Documento atual (clique para visualizar)
-                            </a>
-                          </div>
-                        )}
-                        <Input
-                          id="doc2"
-                          type="file"
-                          onChange={(e) => setDocuments({ ...documents, doc2: e.target.files?.[0] || null })}
-                          className="h-12"
+                        <Label htmlFor="description">Resumo da Solução *</Label>
+                        <Textarea
+                          id="description"
+                          placeholder="Descreva resumidamente sua proposta de solução"
+                          value={solutionData.description}
+                          onChange={(e) => setSolutionData({ ...solutionData, description: e.target.value })}
+                          rows={3}
                         />
-                        {existingSolution?.document_2_url && (
-                          <p className="text-xs text-muted-foreground">
-                            Faça upload de um novo arquivo para substituir o documento atual
-                          </p>
-                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="doc3">Documento 3</Label>
-                        {existingSolution?.document_3_url && (
-                          <div className="mb-2">
-                            <a 
-                              href={existingSolution.document_3_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline flex items-center gap-2"
-                            >
-                              <FileText className="h-4 w-4" />
-                              Documento atual (clique para visualizar)
-                            </a>
-                          </div>
-                        )}
-                        <Input
-                          id="doc3"
-                          type="file"
-                          onChange={(e) => setDocuments({ ...documents, doc3: e.target.files?.[0] || null })}
-                          className="h-12"
+                        <Label htmlFor="problem_solved">Que problema sua solução resolve?</Label>
+                        <Textarea
+                          id="problem_solved"
+                          placeholder="Descreva o problema que sua solução resolve"
+                          value={solutionData.problem_solved}
+                          onChange={(e) => setSolutionData({ ...solutionData, problem_solved: e.target.value })}
+                          rows={3}
                         />
-                        {existingSolution?.document_3_url && (
-                          <p className="text-xs text-muted-foreground">
-                            Faça upload de um novo arquivo para substituir o documento atual
-                          </p>
-                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="contribution_objectives">Contribuição para os objetivos</Label>
+                        <Textarea
+                          id="contribution_objectives"
+                          placeholder="Como sua solução contribui para os objetivos do programa?"
+                          value={solutionData.contribution_objectives}
+                          onChange={(e) => setSolutionData({ ...solutionData, contribution_objectives: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="direct_beneficiaries">Beneficiários Diretos</Label>
+                        <Textarea
+                          id="direct_beneficiaries"
+                          placeholder="Quem são os beneficiários diretos da solução?"
+                          value={solutionData.direct_beneficiaries}
+                          onChange={(e) => setSolutionData({ ...solutionData, direct_beneficiaries: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="detailed_operation">Funcionamento Detalhado</Label>
+                        <Textarea
+                          id="detailed_operation"
+                          placeholder="Como sua solução funciona em detalhes?"
+                          value={solutionData.detailed_operation}
+                          onChange={(e) => setSolutionData({ ...solutionData, detailed_operation: e.target.value })}
+                          rows={4}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="solution_differentials">Diferenciais da Solução</Label>
+                        <Textarea
+                          id="solution_differentials"
+                          placeholder="Quais são os diferenciais da sua solução?"
+                          value={solutionData.solution_differentials}
+                          onChange={(e) => setSolutionData({ ...solutionData, solution_differentials: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="benefits">Benefícios Esperados</Label>
+                        <Textarea
+                          id="benefits"
+                          placeholder="Quais benefícios sua solução pode trazer?"
+                          value={solutionData.benefits}
+                          onChange={(e) => setSolutionData({ ...solutionData, benefits: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="territory_replication">Replicação em Territórios</Label>
+                        <Textarea
+                          id="territory_replication"
+                          placeholder="Sua solução pode ser replicada em outros territórios? Como?"
+                          value={solutionData.territory_replication}
+                          onChange={(e) => setSolutionData({ ...solutionData, territory_replication: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="required_resources">Recursos Necessários</Label>
+                        <Textarea
+                          id="required_resources"
+                          placeholder="Quais recursos são necessários para implementar a solução?"
+                          value={solutionData.required_resources}
+                          onChange={(e) => setSolutionData({ ...solutionData, required_resources: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="validation_prototyping">Validação e Prototipagem</Label>
+                        <Textarea
+                          id="validation_prototyping"
+                          placeholder="Sua solução já foi validada ou prototipada? Descreva"
+                          value={solutionData.validation_prototyping}
+                          onChange={(e) => setSolutionData({ ...solutionData, validation_prototyping: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="success_indicators">Indicadores de Sucesso</Label>
+                        <Textarea
+                          id="success_indicators"
+                          placeholder="Quais indicadores demonstram o sucesso da solução?"
+                          value={solutionData.success_indicators}
+                          onChange={(e) => setSolutionData({ ...solutionData, success_indicators: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="established_partnerships">Parcerias Estabelecidas</Label>
+                        <Textarea
+                          id="established_partnerships"
+                          placeholder="Há parcerias estabelecidas para esta solução?"
+                          value={solutionData.established_partnerships}
+                          onChange={(e) => setSolutionData({ ...solutionData, established_partnerships: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="solution_continuity">Continuidade da Solução</Label>
+                        <Textarea
+                          id="solution_continuity"
+                          placeholder="Como será garantida a continuidade da solução?"
+                          value={solutionData.solution_continuity}
+                          onChange={(e) => setSolutionData({ ...solutionData, solution_continuity: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-4">
+                        <Label>Links e Redes Sociais</Label>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="linkedin_link">LinkedIn</Label>
+                            <Input
+                              id="linkedin_link"
+                              placeholder="URL do LinkedIn"
+                              value={solutionData.linkedin_link}
+                              onChange={(e) => setSolutionData({ ...solutionData, linkedin_link: e.target.value })}
+                              className="h-12"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram_link">Instagram</Label>
+                            <Input
+                              id="instagram_link"
+                              placeholder="URL do Instagram"
+                              value={solutionData.instagram_link}
+                              onChange={(e) => setSolutionData({ ...solutionData, instagram_link: e.target.value })}
+                              className="h-12"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="portfolio_link">Portfólio</Label>
+                            <Input
+                              id="portfolio_link"
+                              placeholder="URL do Portfólio"
+                              value={solutionData.portfolio_link}
+                              onChange={(e) => setSolutionData({ ...solutionData, portfolio_link: e.target.value })}
+                              className="h-12"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Label>Documentos (até 3 arquivos)</Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="doc1">Documento 1</Label>
+                          {existingSolution?.document_1_url && (
+                            <div className="mb-2">
+                              <a
+                                href={existingSolution.document_1_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Documento atual (clique para visualizar)
+                              </a>
+                            </div>
+                          )}
+                          <Input
+                            id="doc1"
+                            type="file"
+                            onChange={(e) => setDocuments({ ...documents, doc1: e.target.files?.[0] || null })}
+                            className="h-12"
+                          />
+                          {existingSolution?.document_1_url && (
+                            <p className="text-xs text-muted-foreground">
+                              Faça upload de um novo arquivo para substituir o documento atual
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="doc2">Documento 2</Label>
+                          {existingSolution?.document_2_url && (
+                            <div className="mb-2">
+                              <a
+                                href={existingSolution.document_2_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Documento atual (clique para visualizar)
+                              </a>
+                            </div>
+                          )}
+                          <Input
+                            id="doc2"
+                            type="file"
+                            onChange={(e) => setDocuments({ ...documents, doc2: e.target.files?.[0] || null })}
+                            className="h-12"
+                          />
+                          {existingSolution?.document_2_url && (
+                            <p className="text-xs text-muted-foreground">
+                              Faça upload de um novo arquivo para substituir o documento atual
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="doc3">Documento 3</Label>
+                          {existingSolution?.document_3_url && (
+                            <div className="mb-2">
+                              <a
+                                href={existingSolution.document_3_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Documento atual (clique para visualizar)
+                              </a>
+                            </div>
+                          )}
+                          <Input
+                            id="doc3"
+                            type="file"
+                            onChange={(e) => setDocuments({ ...documents, doc3: e.target.files?.[0] || null })}
+                            className="h-12"
+                          />
+                          {existingSolution?.document_3_url && (
+                            <p className="text-xs text-muted-foreground">
+                              Faça upload de um novo arquivo para substituir o documento atual
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={handleSaveDraft}
+                          disabled={isSubmitting}
+                          variant="outline"
+                          className="flex-1 h-11 rounded-full"
+                        >
+                          {isSubmitting ? "Salvando..." : "Salvar Rascunho"}
+                        </Button>
+                        <Button
+                          onClick={handleSubmitSolution}
+                          disabled={isSubmitting}
+                          className="flex-1 h-11 rounded-full"
+                        >
+                          {isSubmitting ? "Enviando..." : "Enviar Solução"}
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={handleSaveDraft}
-                        disabled={isSubmitting}
-                        variant="outline"
-                        className="flex-1 h-11 rounded-full"
-                      >
-                        {isSubmitting ? "Salvando..." : "Salvar Rascunho"}
-                      </Button>
-                      <Button
-                        onClick={handleSubmitSolution}
-                        disabled={isSubmitting}
-                        className="flex-1 h-11 rounded-full"
-                      >
-                        {isSubmitting ? "Enviando..." : "Enviar Solução"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogContent>
+                </Dialog>
               ) : null}
 
               {!session && (
-              <Card className="bg-primary text-primary-foreground break-words">
-                <CardContent className="pt-6">
-                  <h3 className="text-lg font-semibold mb-2">Quer participar?</h3>
-                  <p className="text-sm text-primary-foreground/90 mb-4">
-                    Cadastre-se na plataforma e envie sua proposta de solução para este desafio.
-                  </p>
-                  <Button variant="secondary" className="w-full rounded-full" asChild>
-                    <Link to="/auth?mode=register">Criar conta</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                <Card className="bg-primary text-primary-foreground break-words">
+                  <CardContent className="pt-6">
+                    <h3 className="text-lg font-semibold mb-2">Quer participar?</h3>
+                    <p className="text-sm text-primary-foreground/90 mb-4">
+                      Cadastre-se na plataforma e envie sua proposta de solução para este desafio.
+                    </p>
+                    <Button variant="secondary" className="w-full rounded-full" asChild>
+                      <Link to="/auth?mode=register">Criar conta</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </div>

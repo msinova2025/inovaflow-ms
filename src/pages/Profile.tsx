@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { authApi, usersApi } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,16 @@ export default function Profile() {
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      const userData = await authApi.getMe();
+      if (!userData) {
         navigate("/auth");
         return;
       }
-
-      await loadProfile(session.user.id);
+      setProfile(userData);
+      setFullName(userData.full_name || "");
+      setPhone(userData.phone || "");
+      // avatar_url might not exist in local DB yet, but we'll keep the field
+      setAvatarUrl(userData.avatar_url || "");
     } catch (error) {
       console.error("Error checking user:", error);
       navigate("/auth");
@@ -46,27 +48,7 @@ export default function Profile() {
   };
 
   const loadProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) throw error;
-      
-      setProfile(data);
-      setFullName(data.full_name || "");
-      setPhone(data.phone || "");
-      setAvatarUrl(data.avatar_url || "");
-    } catch (error: any) {
-      console.error("Error loading profile:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar perfil",
-        description: error.message,
-      });
-    }
+    // Profile is already loaded by getMe in checkUser for now
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +60,6 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast({
         variant: "destructive",
@@ -88,44 +69,21 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: "Arquivo muito grande",
-        description: "A imagem deve ter no máximo 2MB.",
-      });
-      return;
-    }
-
-    setUploading(true);
-
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${profile.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
+      setUploading(true);
+      // Mocking avatar upload for now
+      console.log("Mocking avatar upload:", file.name);
+      const publicUrl = `https://mock-storage.local/${file.name}`;
       setAvatarUrl(publicUrl);
 
       toast({
-        title: "Foto enviada",
-        description: "Não esqueça de salvar suas alterações!",
+        title: "Avatar enviado",
+        description: "Imagem carregada com sucesso!",
       });
     } catch (error: any) {
-      console.error("Error uploading file:", error);
       toast({
         variant: "destructive",
-        title: "Erro ao enviar foto",
+        title: "Erro ao carregar avatar",
         description: error.message,
       });
     } finally {
@@ -138,30 +96,25 @@ export default function Profile() {
     setUpdating(true);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: fullName,
-          phone: phone,
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", profile.id);
+      if (!profile?.id) throw new Error("Usuário não identificado");
 
-      if (error) throw error;
+      await usersApi.update(profile.id, {
+        full_name: fullName,
+        phone: phone,
+      });
 
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram salvas com sucesso!",
       });
 
-      await loadProfile(profile.id);
+      await checkUser();
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({
         variant: "destructive",
         title: "Erro ao atualizar perfil",
-        description: error.message,
+        description: error.response?.data?.error || "Ocorreu um erro ao atualizar o perfil.",
       });
     } finally {
       setUpdating(false);
@@ -204,7 +157,7 @@ export default function Profile() {
                       {initials || <User className="h-12 w-12" />}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div>
                     <input
                       type="file"

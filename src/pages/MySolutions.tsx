@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { solutionsApi } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,29 +15,9 @@ export default function MySolutions() {
   const navigate = useNavigate();
   const [viewingSolution, setViewingSolution] = useState<any>(null);
 
-  const { data: session } = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
-    },
-  });
-
   const { data: solutions, isLoading } = useQuery({
-    queryKey: ["my-solutions", session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from("solutions")
-        .select("*, challenges(title)")
-        .eq("created_by", session.user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.user?.id,
+    queryKey: ["my-solutions"],
+    queryFn: () => solutionsApi.getMy(),
   });
 
   const statusLabels: Record<string, string> = {
@@ -78,7 +58,7 @@ export default function MySolutions() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-12">
           <Button variant="ghost" className="mb-8 rounded-full" onClick={() => navigate("/dashboard")}>
@@ -111,8 +91,8 @@ export default function MySolutions() {
           ) : (
             <div className="grid gap-6">
               {solutions.map((solution) => (
-                <Card 
-                  key={solution.id} 
+                <Card
+                  key={solution.id}
                   className="hover:shadow-lg transition-shadow"
                 >
                   <CardHeader>
@@ -120,7 +100,7 @@ export default function MySolutions() {
                       <div className="flex-1">
                         <CardTitle className="text-xl mb-2">{solution.title}</CardTitle>
                         <p className="text-sm text-muted-foreground">
-                          Desafio: {solution.challenges?.title}
+                          Desafio: {solution.challenge_title}
                         </p>
                       </div>
                       <Badge variant={statusColors[solution.status]}>
@@ -141,8 +121,8 @@ export default function MySolutions() {
                       </div>
                       <div className="flex gap-2">
                         {solution.status === "draft" ? (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="rounded-full"
                             onClick={(e) => {
@@ -154,8 +134,8 @@ export default function MySolutions() {
                             Editar
                           </Button>
                         ) : (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="rounded-full"
                             onClick={(e) => {
@@ -185,12 +165,12 @@ export default function MySolutions() {
           <DialogHeader>
             <DialogTitle>{viewingSolution?.title}</DialogTitle>
           </DialogHeader>
-          
+
           {viewingSolution && (
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold mb-2">Desafio</h3>
-                <p className="text-muted-foreground">{viewingSolution.challenges?.title}</p>
+                <p className="text-muted-foreground">{viewingSolution.challenge_title}</p>
               </div>
 
               <div>
@@ -225,9 +205,9 @@ export default function MySolutions() {
                   <h3 className="font-semibold mb-3">Documentos Anexados</h3>
                   <div className="space-y-2">
                     {viewingSolution.document_1_url && (
-                      <a 
-                        href={viewingSolution.document_1_url} 
-                        target="_blank" 
+                      <a
+                        href={viewingSolution.document_1_url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-primary hover:underline"
                       >
@@ -237,9 +217,9 @@ export default function MySolutions() {
                       </a>
                     )}
                     {viewingSolution.document_2_url && (
-                      <a 
-                        href={viewingSolution.document_2_url} 
-                        target="_blank" 
+                      <a
+                        href={viewingSolution.document_2_url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-primary hover:underline"
                       >
@@ -249,9 +229,9 @@ export default function MySolutions() {
                       </a>
                     )}
                     {viewingSolution.document_3_url && (
-                      <a 
-                        href={viewingSolution.document_3_url} 
-                        target="_blank" 
+                      <a
+                        href={viewingSolution.document_3_url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-primary hover:underline"
                       >

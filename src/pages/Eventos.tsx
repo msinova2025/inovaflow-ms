@@ -3,20 +3,14 @@ import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { eventsApi } from "@/lib/api";
 import { Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Eventos() {
   const { data: events, isLoading } = useQuery({
     queryKey: ["all-events"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("events")
-        .select("*")
-        .order("start_date", { ascending: true });
-      return data || [];
-    },
+    queryFn: () => eventsApi.getAll(),
   });
 
   return (
@@ -44,7 +38,7 @@ export default function Eventos() {
               </div>
             ) : events && events.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
+                {events.map((event: any) => (
                   <Card key={event.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                     {event.image_url && (
                       <img
@@ -60,7 +54,7 @@ export default function Eventos() {
                     <CardContent className="space-y-3">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-2" />
-                        {new Date(event.start_date).toLocaleDateString("pt-BR", {
+                        {event.start_date && new Date(event.start_date).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "long",
                           year: "numeric",
@@ -85,7 +79,7 @@ export default function Eventos() {
                   Novos eventos serão anunciados em breve. Acompanhe nossas redes sociais!
                 </p>
                 <Button asChild>
-                  <a href="/">Voltar para home</a>
+                  <Link to="/">Voltar para home</Link>
                 </Button>
               </div>
             )}

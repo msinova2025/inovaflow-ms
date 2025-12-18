@@ -1,33 +1,25 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { useQuery } from "@tanstack/react-query";
+import { programApi } from "@/lib/api";
 import DOMPurify from "dompurify";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Sobre() {
   const { data: programInfo, isLoading } = useQuery({
     queryKey: ["program-info"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("program_info")
-        .select("*")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => programApi.getAll(),
   });
 
   // Group by section
-  const groupedInfo = programInfo?.reduce((acc, item) => {
+  const groupedInfo = programInfo?.reduce((acc: any, item: any) => {
     if (!acc[item.section]) {
       acc[item.section] = [];
     }
     acc[item.section].push(item);
     return acc;
-  }, {} as Record<string, typeof programInfo>);
+  }, {} as Record<string, any[]>);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -53,7 +45,7 @@ export default function Sobre() {
               </div>
             ) : groupedInfo && Object.keys(groupedInfo).length > 0 ? (
               <div className="space-y-12">
-                {Object.entries(groupedInfo).map(([section, items]) => (
+                {Object.entries(groupedInfo).map(([section, items]: [string, any[]]) => (
                   <div key={section} className="space-y-6">
                     <h2 className="text-3xl font-bold text-foreground border-b-2 border-primary pb-3">
                       {section}

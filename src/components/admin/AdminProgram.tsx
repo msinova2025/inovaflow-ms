@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
-import { supabase } from "@/integrations/supabase/client";
+import { programApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,23 +52,12 @@ export default function AdminProgram() {
   // Fetch program info
   const { data: programInfo, isLoading } = useQuery({
     queryKey: ["admin-program-info"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("program_info")
-        .select("*")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => programApi.getAll(),
   });
 
   // Create program info mutation
   const createMutation = useMutation({
-    mutationFn: async (data: ProgramFormData) => {
-      const { error } = await supabase.from("program_info").insert([data]);
-      if (error) throw error;
-    },
+    mutationFn: (data: ProgramFormData) => programApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-program-info"] });
       toast({ title: "Informação criada com sucesso!" });
@@ -85,10 +74,7 @@ export default function AdminProgram() {
 
   // Update program info mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ProgramFormData }) => {
-      const { error } = await supabase.from("program_info").update(data).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, data }: { id: string; data: ProgramFormData }) => programApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-program-info"] });
       toast({ title: "Informação atualizada com sucesso!" });
@@ -105,10 +91,7 @@ export default function AdminProgram() {
 
   // Delete program info mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("program_info").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => programApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-program-info"] });
       toast({ title: "Informação excluída com sucesso!" });
@@ -274,7 +257,7 @@ export default function AdminProgram() {
               </div>
             </CardHeader>
             <CardContent>
-              <div 
+              <div
                 className="prose prose-sm max-w-none dark:prose-invert [&_a]:text-primary [&_a]:underline"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content) }}
               />

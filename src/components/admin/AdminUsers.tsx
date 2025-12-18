@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { usersApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Plus, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Database } from "@/integrations/supabase/types";
 import { formatCPFOrCNPJ, formatPhone } from "@/lib/utils";
 
-type UserType = Database["public"]["Enums"]["user_type"];
-type AppRole = Database["public"]["Enums"]["app_role"];
+type UserType = "admin" | "advanced" | "challenger" | "solver";
 
 interface UserFormData {
   full_name: string;
@@ -40,55 +38,19 @@ export function AdminUsers() {
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => usersApi.getAll(),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<UserFormData> }) => {
-      // Update profile
-      const profileUpdate: any = {
+    mutationFn: ({ id, data }: { id: string; data: Partial<UserFormData> }) => {
+      // Backend will handle the complex role update logic
+      const updateData = {
         full_name: data.full_name,
-        cpf_cnpj: data.cpf_cnpj,
         phone: data.phone,
         organization: data.organization,
+        role: data.user_type, // Map user_type to role for backend
       };
-      
-      if (data.user_type) {
-        profileUpdate.user_type = data.user_type;
-      }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update(profileUpdate)
-        .eq("id", id);
-      
-      if (profileError) throw profileError;
-
-      // Update role in user_roles table
-      if (data.user_type) {
-        // Delete existing role
-        await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", id);
-
-        // Insert new role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: id,
-            role: data.user_type as AppRole,
-          });
-
-        if (roleError) throw roleError;
-      }
+      return usersApi.update(id, updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });

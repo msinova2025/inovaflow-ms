@@ -4,21 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { challengesApi } from "@/lib/api";
 import { Target, Calendar, Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Desafios() {
   const { data: challenges, isLoading } = useQuery({
     queryKey: ["public-challenges"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("challenges")
-        .select("*, profiles(full_name, organization)")
-        .eq("status", "approved")
-        .order("created_at", { ascending: false });
-      return data || [];
-    },
+    queryFn: () => challengesApi.getAll(),
   });
 
   const axisLabels = {
@@ -61,8 +54,8 @@ export default function Desafios() {
                   <Card key={challenge.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                     {challenge.banner_url && (
                       <div className="w-full h-48 overflow-hidden">
-                        <img 
-                          src={challenge.banner_url} 
+                        <img
+                          src={challenge.banner_url}
                           alt={challenge.title}
                           className="w-full h-full object-cover"
                         />

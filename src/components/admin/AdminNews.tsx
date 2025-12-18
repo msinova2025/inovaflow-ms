@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { newsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,23 +39,12 @@ export default function AdminNews() {
   // Fetch news
   const { data: news, isLoading } = useQuery({
     queryKey: ["admin-news"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("news")
-        .select("*")
-        .order("published_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => newsApi.getAll(),
   });
 
   // Create news mutation
   const createMutation = useMutation({
-    mutationFn: async (data: NewsFormData) => {
-      const { error } = await supabase.from("news").insert([data]);
-      if (error) throw error;
-    },
+    mutationFn: (data: NewsFormData) => newsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
       toast({ title: "Notícia criada com sucesso!" });
@@ -72,10 +61,7 @@ export default function AdminNews() {
 
   // Update news mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: NewsFormData }) => {
-      const { error } = await supabase.from("news").update(data).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, data }: { id: string; data: NewsFormData }) => newsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
       toast({ title: "Notícia atualizada com sucesso!" });
@@ -92,10 +78,7 @@ export default function AdminNews() {
 
   // Delete news mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("news").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => newsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-news"] });
       toast({ title: "Notícia excluída com sucesso!" });
@@ -116,22 +99,10 @@ export default function AdminNews() {
 
     setUploadingImage(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `news/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("uploads")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("uploads")
-        .getPublicUrl(filePath);
-
+      // Mocking image upload
+      const publicUrl = `https://mock-storage.local/news/${file.name}`;
       setFormData({ ...formData, image_url: publicUrl });
-      toast({ title: "Imagem enviada com sucesso!" });
+      toast({ title: "Imagem enviada com sucesso! (MOCK)" });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -306,36 +277,36 @@ export default function AdminNews() {
           </Card>
         ) : (
           news?.map((item) => (
-          <Card key={item.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <CardTitle>{item.title}</CardTitle>
-                  <CardDescription className="flex items-center gap-2">
-                    <Newspaper className="h-4 w-4" />
-                    {format(new Date(item.published_at), "dd/MM/yyyy")}
-                  </CardDescription>
+            <Card key={item.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <CardTitle>{item.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <Newspaper className="h-4 w-4" />
+                      {format(new Date(item.published_at), "dd/MM/yyyy")}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => handleEdit(item)} className="rounded-full">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeleteId(item.id)}
+                      className="rounded-full"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => handleEdit(item)} className="rounded-full">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setDeleteId(item.id)}
-                    className="rounded-full"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{item.summary}</p>
-            </CardContent>
-          </Card>
-        ))
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{item.summary}</p>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 

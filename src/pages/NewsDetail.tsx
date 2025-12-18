@@ -1,35 +1,36 @@
-import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import DOMPurify from "dompurify";
-import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, ArrowLeft } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { newsApi } from "@/lib/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar, User } from "lucide-react";
+import DOMPurify from "dompurify";
 
 export default function NewsDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const { data: news, isLoading } = useQuery({
-    queryKey: ["news", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("news")
-        .select("*")
-        .eq("id", id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["news-detail", id],
+    queryFn: () => newsApi.getById(id!),
+    enabled: !!id,
   });
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <main className="flex-1 container py-12">
+          <div className="animate-pulse space-y-8">
+            <div className="h-10 w-32 bg-muted rounded"></div>
+            <div className="h-64 bg-muted rounded-xl"></div>
+            <div className="space-y-4">
+              <div className="h-10 w-3/4 bg-muted rounded"></div>
+              <div className="h-4 w-1/4 bg-muted rounded"></div>
+              <div className="h-32 w-full bg-muted rounded"></div>
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -40,16 +41,9 @@ export default function NewsDetail() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 container py-12">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Notícia não encontrada</h1>
-            <Button asChild>
-              <Link to="/noticias">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar para notícias
-              </Link>
-            </Button>
-          </div>
+        <main className="flex-1 container py-12 text-center">
+          <h1 className="text-2xl font-bold mb-4">Notícia não encontrada</h1>
+          <Button onClick={() => navigate("/noticias")}>Voltar para notícias</Button>
         </main>
         <Footer />
       </div>
@@ -61,39 +55,54 @@ export default function NewsDetail() {
       <Header />
 
       <main className="flex-1">
-        <article className="container py-8 max-w-4xl">
-          <Button variant="ghost" className="mb-6 rounded-full" asChild>
-            <Link to="/noticias">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para notícias
-            </Link>
+        <article className="container py-12 max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            className="mb-8 rounded-full"
+            onClick={() => navigate("/noticias")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para notícias
           </Button>
 
           {news.image_url && (
-            <img
-              src={news.image_url}
-              alt={news.title}
-              className="w-full h-[400px] object-cover rounded-lg mb-8"
-            />
+            <div className="mb-8 rounded-2xl overflow-hidden shadow-lg aspect-video">
+              <img
+                src={news.image_url}
+                alt={news.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
 
-          <div className="flex items-center text-muted-foreground mb-4">
-            <Calendar className="h-4 w-4 mr-2" />
-            <time dateTime={news.published_at}>
-              {new Date(news.published_at).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}
-            </time>
-          </div>
+          <header className="mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-tight">
+              {news.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-6 text-muted-foreground border-y py-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span>
+                  {new Date(news.published_at).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+              {news.author && (
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  <span>{news.author}</span>
+                </div>
+              )}
+            </div>
+          </header>
 
-          <h1 className="text-4xl font-bold mb-6">{news.title}</h1>
-
-          <div className="prose prose-lg max-w-none">
-            <p className="text-xl text-muted-foreground mb-8">{news.summary}</p>
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(news.content) }} />
-          </div>
+          <div
+            className="prose prose-lg max-w-none text-foreground/80"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(news.content) }}
+          />
         </article>
       </main>
 

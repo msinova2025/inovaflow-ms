@@ -1,0 +1,47 @@
+# SETDIG uses Kong API Gateway for backend APIs
+# This IngressRoute will be configured by SETDIG team during deployment
+# Following the naming convention from the manual
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: KXXXX-prd-inovaflow-backend-v1-ingress
+  namespace: default
+  annotations:
+    # Kong will handle JWT validation via Keycloak
+    konghq.com/plugins: "KXXXX-jwt-auth"
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  # Protected API endpoint (requires JWT)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/KXXXX/inovaflow/v1`)
+    kind: Rule
+    services:
+    - name: KXXXX-prd-inovaflow-backend-v1
+      port: 3001
+    middlewares:
+    - name: strip-prefix
+  
+  # Public documentation endpoint (no JWT required)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/KXXXX/inovaflow/v1/swagger`)
+    kind: Rule
+    services:
+    - name: KXXXX-prd-inovaflow-backend-v1
+      port: 3001
+  
+  tls:
+    certResolver: default
+
+---
+# Middleware to strip the prefix
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - /KXXXX/inovaflow/v1

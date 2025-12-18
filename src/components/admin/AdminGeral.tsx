@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { geralApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,29 +26,15 @@ export default function AdminGeral() {
 
   const { data: geral, isLoading } = useQuery({
     queryKey: ["geral"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("geral")
-        .select("*")
-        .single();
-      
-      if (error) throw error;
-      return data as GeralData;
-    },
+    queryFn: () => geralApi.get(),
   });
 
   const [formData, setFormData] = useState<Partial<GeralData>>({});
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<GeralData>) => {
+    mutationFn: (data: Partial<GeralData>) => {
       if (!geral?.id) throw new Error("ID não encontrado");
-      
-      const { error } = await supabase
-        .from("geral")
-        .update(data)
-        .eq("id", geral.id);
-
-      if (error) throw error;
+      return geralApi.update(geral.id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["geral"] });
@@ -69,7 +55,7 @@ export default function AdminGeral() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const updates = Object.keys(formData).reduce((acc, key) => {
       const value = formData[key as keyof GeralData];
       if (value !== undefined && value !== "") {
@@ -220,9 +206,9 @@ export default function AdminGeral() {
           </CardContent>
         </Card>
 
-        <Button 
-          type="submit" 
-          className="w-full rounded-full" 
+        <Button
+          type="submit"
+          className="w-full rounded-full"
           disabled={updateMutation.isPending}
         >
           {updateMutation.isPending ? (

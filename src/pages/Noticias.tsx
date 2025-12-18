@@ -3,20 +3,14 @@ import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { newsApi } from "@/lib/api";
 import { FileText, Calendar, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Noticias() {
   const { data: news, isLoading } = useQuery({
     queryKey: ["all-news"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("news")
-        .select("*")
-        .order("published_at", { ascending: false });
-      return data || [];
-    },
+    queryFn: () => newsApi.getAll(),
   });
 
   return (
@@ -44,7 +38,7 @@ export default function Noticias() {
               </div>
             ) : news && news.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {news.map((item) => (
+                {news.map((item: any) => (
                   <Card key={item.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                     {item.image_url && (
                       <img
@@ -56,7 +50,7 @@ export default function Noticias() {
                     <CardHeader>
                       <div className="flex items-center text-sm text-muted-foreground mb-2">
                         <Calendar className="h-4 w-4 mr-2" />
-                        {new Date(item.published_at).toLocaleDateString("pt-BR", {
+                        {item.published_at && new Date(item.published_at).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "long",
                           year: "numeric",

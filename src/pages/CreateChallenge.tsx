@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { authApi, challengesApi } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,8 @@ export default function CreateChallenge() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string>("");
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadFromLocalStorage = () => {
@@ -66,45 +65,14 @@ export default function CreateChallenge() {
 
   const [formData, setFormData] = useState<ChallengeFormData>(loadFromLocalStorage);
 
-  const { data: session } = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
-    },
-  });
-
-  const { data: profile } = useQuery({
-    queryKey: ["profile", session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.user?.id,
+  const { data: userData } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => authApi.getMe(),
   });
 
   const { data: existingChallenge } = useQuery({
     queryKey: ["challenge", id],
-    queryFn: async () => {
-      if (!id) return null;
-      
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => challengesApi.getById(id!),
     enabled: !!id,
   });
 
@@ -126,20 +94,14 @@ export default function CreateChallenge() {
         end_date: existingChallenge.end_date || "",
       });
       setBannerUrl(existingChallenge.banner_url || "");
-      
-      // Tratar attachments como array
-      if (existingChallenge.attachments && Array.isArray(existingChallenge.attachments)) {
-        setAttachments(existingChallenge.attachments as string[]);
-      } else {
-        setAttachments([]);
-      }
+      setAttachments(Array.isArray(existingChallenge.attachments) ? existingChallenge.attachments : []);
     }
   }, [existingChallenge]);
 
   // Verificar se o desafio já foi enviado
   useEffect(() => {
     if (existingChallenge && existingChallenge.status !== "draft") {
-      const isAdmin = profile?.user_type === "admin" || profile?.user_type === "advanced";
+      const isAdmin = userData?.role === "admin" || userData?.role === "advanced";
       if (!isAdmin) {
         toast({
           title: "Acesso negado",
@@ -149,7 +111,7 @@ export default function CreateChallenge() {
         navigate(`/desafios/${id}`);
       }
     }
-  }, [existingChallenge, profile, id, navigate, toast]);
+  }, [existingChallenge, userData, id, navigate, toast]);
 
   // Salvar no localStorage
   useEffect(() => {
@@ -158,7 +120,7 @@ export default function CreateChallenge() {
 
   // Verificar permissão
   useEffect(() => {
-    if (profile && profile.user_type !== "challenger" && profile.user_type !== "admin" && profile.user_type !== "advanced") {
+    if (userData && userData.role !== "challenger" && userData.role !== "admin" && userData.role !== "advanced") {
       toast({
         title: "Acesso negado",
         description: "Apenas desafiadores podem criar desafios.",
@@ -166,113 +128,45 @@ export default function CreateChallenge() {
       });
       navigate("/dashboard");
     }
-  }, [profile, navigate, toast]);
+  }, [userData, navigate, toast]);
 
   const handleBannerUpload = async (file: File) => {
-    if (!session?.user?.id) return;
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('challenge-banners')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('challenge-banners')
-        .getPublicUrl(fileName);
-
-      setBannerUrl(publicUrl);
-      toast({ title: "Banner enviado com sucesso!" });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao enviar banner",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    // Mocking banner upload for now
+    console.log("Mocking banner upload:", file.name);
+    setBannerUrl(`https://mock-storage.local/${file.name}`);
+    toast({ title: "Banner enviado (mock)!" });
   };
 
   const handleAttachmentUpload = async (files: FileList | null) => {
-    if (!files || !session?.user?.id) return;
-
-    try {
-      const uploadedUrls: string[] = [];
-
-      for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${session.user.id}/${Date.now()}_${file.name}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('uploads')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('uploads')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrl);
-      }
-
-      setAttachments([...attachments, ...uploadedUrls]);
-      toast({ title: "Anexos enviados com sucesso!" });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao enviar anexos",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    if (!files) return;
+    const newAttachments = Array.from(files).map(file => ({
+      name: file.name,
+      url: `https://mock-storage.local/${file.name}`
+    }));
+    setAttachments([...attachments, ...newAttachments]);
+    toast({ title: "Anexos enviados (mock)!" });
   };
 
   const saveMutation = useMutation({
     mutationFn: async (status: "draft" | "pending") => {
-      if (!session?.user?.id) throw new Error("Não autenticado");
-
       const challengeData = {
-        title: formData.title,
-        description: formData.description,
-        proposer: formData.proposer,
-        modality: formData.modality,
-        axis: formData.axis,
-        relationship_type: formData.relationship_type,
-        expected_results: formData.expected_results || null,
-        benefits: formData.benefits || null,
-        contact_email: formData.contact_email || null,
-        contact_phone: formData.contact_phone || null,
-        start_date: formData.start_date || null,
-        end_date: formData.end_date || null,
+        ...formData,
         banner_url: bannerUrl || null,
         attachments: attachments.length > 0 ? attachments : null,
         status,
-        created_by: session.user.id,
+        created_by: userData?.id,
       };
 
       if (id) {
-        const { error } = await supabase
-          .from("challenges")
-          .update(challengeData)
-          .eq("id", id);
-        if (error) throw error;
+        return challengesApi.update(id, challengeData);
       } else {
-        const { data, error } = await supabase
-          .from("challenges")
-          .insert(challengeData)
-          .select()
-          .single();
-        if (error) throw error;
-        return data;
+        return challengesApi.create(challengeData);
       }
     },
-    onSuccess: (data, status) => {
+    onSuccess: (data: any, status: any) => {
       queryClient.invalidateQueries({ queryKey: ["challenges"] });
       queryClient.invalidateQueries({ queryKey: ["my-challenges"] });
-      
+
       if (status === "pending") {
         localStorage.removeItem(`challenge-draft-${id || "new"}`);
         toast({
@@ -293,7 +187,7 @@ export default function CreateChallenge() {
     onError: (error: any) => {
       toast({
         title: "Erro ao salvar",
-        description: error.message,
+        description: error.response?.data?.error || error.message,
         variant: "destructive",
       });
     },
@@ -339,7 +233,7 @@ export default function CreateChallenge() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-12 max-w-4xl">
           <Button variant="ghost" className="mb-8 rounded-full" onClick={() => navigate("/meus-desafios")}>
@@ -521,7 +415,6 @@ export default function CreateChallenge() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setBannerFile(file);
                         handleBannerUpload(file);
                       }
                     }}
@@ -556,9 +449,9 @@ export default function CreateChallenge() {
                   />
                   {attachments.length > 0 && (
                     <div className="space-y-2">
-                      {attachments.map((url, index) => (
+                      {attachments.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                          <span className="text-sm truncate flex-1">Anexo {index + 1}</span>
+                          <span className="text-sm truncate flex-1">{file.name}</span>
                           <Button
                             type="button"
                             variant="ghost"

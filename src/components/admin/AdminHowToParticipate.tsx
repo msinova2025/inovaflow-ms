@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import DOMPurify from "dompurify";
-import { supabase } from "@/integrations/supabase/client";
+import { howToParticipateApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -63,12 +63,7 @@ export default function AdminHowToParticipate() {
 
   const loadItems = async () => {
     try {
-      const { data, error } = await supabase
-        .from("how_to_participate")
-        .select("*")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
+      const data = await howToParticipateApi.getAll();
       setItems(data || []);
     } catch (error: any) {
       toast({
@@ -86,24 +81,13 @@ export default function AdminHowToParticipate() {
 
     try {
       if (editingItem) {
-        const { error } = await supabase
-          .from("how_to_participate")
-          .update(formData)
-          .eq("id", editingItem.id);
-
-        if (error) throw error;
-
+        await howToParticipateApi.update(editingItem.id, formData);
         toast({
           title: "Item atualizado",
           description: "Item atualizado com sucesso",
         });
       } else {
-        const { error } = await supabase
-          .from("how_to_participate")
-          .insert([formData]);
-
-        if (error) throw error;
-
+        await howToParticipateApi.create(formData);
         toast({
           title: "Item criado",
           description: "Item criado com sucesso",
@@ -136,13 +120,7 @@ export default function AdminHowToParticipate() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("how_to_participate")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-
+      await howToParticipateApi.delete(id);
       toast({
         title: "Item excluído",
         description: "Item excluído com sucesso",
@@ -279,7 +257,7 @@ export default function AdminHowToParticipate() {
               <TableCell>{item.section}</TableCell>
               <TableCell>{item.title}</TableCell>
               <TableCell className="max-w-md">
-                <div 
+                <div
                   className="prose prose-sm line-clamp-2"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content) }}
                 />

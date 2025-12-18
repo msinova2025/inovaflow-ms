@@ -27,4 +27,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-supabase/
+/supabase/
+
+# Backend
+backend/.env
+backend/node_modules

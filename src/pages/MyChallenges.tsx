@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { challengesApi } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,29 +15,9 @@ export default function MyChallenges() {
   const navigate = useNavigate();
   const [viewingChallenge, setViewingChallenge] = useState<any>(null);
 
-  const { data: session } = useQuery({
-    queryKey: ["session"],
-    queryFn: async () => {
-      const { data } = await supabase.auth.getSession();
-      return data.session;
-    },
-  });
-
   const { data: challenges, isLoading } = useQuery({
-    queryKey: ["my-challenges", session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*")
-        .eq("created_by", session.user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!session?.user?.id,
+    queryKey: ["my-challenges"],
+    queryFn: () => challengesApi.getMy(),
   });
 
   const statusLabels: Record<string, string> = {
@@ -76,7 +56,7 @@ export default function MyChallenges() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 bg-muted/30">
         <div className="container mx-auto px-4 py-12">
           <Button variant="ghost" className="mb-8 rounded-full" onClick={() => navigate("/dashboard")}>
@@ -100,7 +80,7 @@ export default function MyChallenges() {
                   <p className="text-muted-foreground">
                     Você ainda não criou nenhum desafio. Comece agora!
                   </p>
-                    <Button className="rounded-full" onClick={() => navigate("/criar-desafio")}>
+                  <Button className="rounded-full" onClick={() => navigate("/criar-desafio")}>
                     Criar Primeiro Desafio
                   </Button>
                 </div>
@@ -109,8 +89,8 @@ export default function MyChallenges() {
           ) : (
             <div className="grid gap-6">
               {challenges.map((challenge) => (
-                <Card 
-                  key={challenge.id} 
+                <Card
+                  key={challenge.id}
                   className="hover:shadow-lg transition-shadow"
                 >
                   <CardHeader>
@@ -146,8 +126,8 @@ export default function MyChallenges() {
                       </div>
                       <div className="flex gap-2">
                         {challenge.status === "draft" ? (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="rounded-full"
                             onClick={() => navigate(`/criar-desafio/${challenge.id}`)}
@@ -156,8 +136,8 @@ export default function MyChallenges() {
                             Editar
                           </Button>
                         ) : (
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="rounded-full"
                             onClick={() => setViewingChallenge(challenge)}
@@ -184,7 +164,7 @@ export default function MyChallenges() {
           <DialogHeader>
             <DialogTitle>{viewingChallenge?.title}</DialogTitle>
           </DialogHeader>
-          
+
           {viewingChallenge && (
             <div className="space-y-6">
               <div>
@@ -243,10 +223,10 @@ export default function MyChallenges() {
                   <h3 className="font-semibold mb-3">Anexos</h3>
                   <div className="space-y-2">
                     {viewingChallenge.attachments.map((url: string, index: number) => (
-                      <a 
+                      <a
                         key={index}
-                        href={url} 
-                        target="_blank" 
+                        href={url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-primary hover:underline"
                       >

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { eventsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,23 +41,12 @@ export default function AdminEvents() {
   // Fetch events
   const { data: events, isLoading } = useQuery({
     queryKey: ["admin-events"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .order("start_date", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => eventsApi.getAll(),
   });
 
   // Create event mutation
   const createMutation = useMutation({
-    mutationFn: async (data: EventFormData) => {
-      const { error } = await supabase.from("events").insert([data]);
-      if (error) throw error;
-    },
+    mutationFn: (data: EventFormData) => eventsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
       toast({ title: "Evento criado com sucesso!" });
@@ -74,10 +63,7 @@ export default function AdminEvents() {
 
   // Update event mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: EventFormData }) => {
-      const { error } = await supabase.from("events").update(data).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, data }: { id: string; data: EventFormData }) => eventsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
       toast({ title: "Evento atualizado com sucesso!" });
@@ -94,10 +80,7 @@ export default function AdminEvents() {
 
   // Delete event mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("events").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => eventsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
       toast({ title: "Evento excluído com sucesso!" });
@@ -118,22 +101,10 @@ export default function AdminEvents() {
 
     setUploadingImage(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `events/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("uploads")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("uploads")
-        .getPublicUrl(filePath);
-
+      // Mocking image upload
+      const publicUrl = `https://mock-storage.local/events/${file.name}`;
       setFormData({ ...formData, image_url: publicUrl });
-      toast({ title: "Imagem enviada com sucesso!" });
+      toast({ title: "Imagem enviada com sucesso! (MOCK)" });
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -320,48 +291,48 @@ export default function AdminEvents() {
           </Card>
         ) : (
           events?.map((event) => (
-          <Card key={event.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <CardTitle>{event.title}</CardTitle>
-                  <CardDescription className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {format(new Date(event.start_date), "dd/MM/yyyy")}
-                    {event.end_date && ` - ${format(new Date(event.end_date), "dd/MM/yyyy")}`}
-                  </CardDescription>
+            <Card key={event.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <CardTitle>{event.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {format(new Date(event.start_date), "dd/MM/yyyy")}
+                      {event.end_date && ` - ${format(new Date(event.end_date), "dd/MM/yyyy")}`}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="icon" onClick={() => handleEdit(event)} className="rounded-full">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setDeleteId(event.id)}
+                      className="rounded-full"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => handleEdit(event)} className="rounded-full">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setDeleteId(event.id)}
-                    className="rounded-full"
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
+                {event.link && (
+                  <a
+                    href={event.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline flex items-center gap-1"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
-              {event.link && (
-                <a
-                  href={event.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline flex items-center gap-1"
-                >
-                  <LinkIcon className="h-3 w-3" />
-                  Ver evento
-                </a>
-              )}
-            </CardContent>
-          </Card>
-        ))
+                    <LinkIcon className="h-3 w-3" />
+                    Ver evento
+                  </a>
+                )}
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 

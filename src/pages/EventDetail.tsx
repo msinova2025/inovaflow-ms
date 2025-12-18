@@ -1,34 +1,35 @@
-import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, ArrowLeft, ExternalLink } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { eventsApi } from "@/lib/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Calendar, MapPin, Clock } from "lucide-react";
 
 export default function EventDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const { data: event, isLoading } = useQuery({
-    queryKey: ["event", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", id)
-        .single();
-      
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["event-detail", id],
+    queryFn: () => eventsApi.getById(id!),
+    enabled: !!id,
   });
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <main className="flex-1 container py-12">
+          <div className="animate-pulse space-y-8">
+            <div className="h-10 w-32 bg-muted rounded"></div>
+            <div className="h-64 bg-muted rounded-xl"></div>
+            <div className="space-y-4">
+              <div className="h-10 w-3/4 bg-muted rounded"></div>
+              <div className="h-4 w-1/4 bg-muted rounded"></div>
+              <div className="h-32 w-full bg-muted rounded"></div>
+            </div>
+          </div>
         </main>
         <Footer />
       </div>
@@ -39,16 +40,9 @@ export default function EventDetail() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 container py-12">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Evento não encontrado</h1>
-            <Button asChild>
-              <Link to="/eventos">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar para eventos
-              </Link>
-            </Button>
-          </div>
+        <main className="flex-1 container py-12 text-center">
+          <h1 className="text-2xl font-bold mb-4">Evento não encontrado</h1>
+          <Button onClick={() => navigate("/eventos")}>Voltar para eventos</Button>
         </main>
         <Footer />
       </div>
@@ -60,63 +54,76 @@ export default function EventDetail() {
       <Header />
 
       <main className="flex-1">
-        <article className="container py-8 max-w-4xl">
-          <Button variant="ghost" className="mb-6 rounded-full" asChild>
-            <Link to="/eventos">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para eventos
-            </Link>
+        <article className="container py-12 max-w-4xl mx-auto">
+          <Button
+            variant="ghost"
+            className="mb-8 rounded-full"
+            onClick={() => navigate("/eventos")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar para eventos
           </Button>
 
           {event.image_url && (
-            <img
-              src={event.image_url}
-              alt={event.title}
-              className="w-full h-[400px] object-cover rounded-lg mb-8"
-            />
+            <div className="mb-8 rounded-2xl overflow-hidden shadow-lg aspect-video">
+              <img
+                src={event.image_url}
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
 
-          <div className="flex items-center text-muted-foreground mb-4">
-            <Calendar className="h-4 w-4 mr-2" />
-            <time dateTime={event.start_date}>
-              {new Date(event.start_date).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </time>
-            {event.end_date && (
-              <>
-                <span className="mx-2">até</span>
-                <time dateTime={event.end_date}>
-                  {new Date(event.end_date).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </time>
-              </>
+          <header className="mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-tight">
+              {event.title}
+            </h1>
+            <div className="grid sm:grid-cols-2 gap-4 border-y py-6">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Calendar className="h-6 w-6 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Data</p>
+                  <p>
+                    {new Date(event.start_date).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Clock className="h-6 w-6 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Horário</p>
+                  <p>
+                    {new Date(event.start_date).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </div>
+              {event.location && (
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <MapPin className="h-6 w-6 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Local</p>
+                    <p>{event.location}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </header>
+
+          <div className="prose prose-lg max-w-none text-foreground/80 space-y-6">
+            <p className="text-xl leading-relaxed">
+              {event.description}
+            </p>
+            {event.content && (
+              <div dangerouslySetInnerHTML={{ __html: event.content }} />
             )}
           </div>
-
-          <h1 className="text-4xl font-bold mb-6">{event.title}</h1>
-
-          <div className="prose prose-lg max-w-none mb-8">
-            <p className="text-xl">{event.description}</p>
-          </div>
-
-          {event.link && (
-            <Button className="rounded-full" size="lg" asChild>
-              <a href={event.link} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Acessar link do evento
-              </a>
-            </Button>
-          )}
         </article>
       </main>
 

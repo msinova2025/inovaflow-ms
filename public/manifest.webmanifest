@@ -1,0 +1,21 @@
+{
+    "name": "MS INOVA MAIS",
+    "short_name": "MS INOVA",
+    "description": "Plataforma de Gestão em Inovação e Competitividade do Estado de Mato Grosso do Sul",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#004f9f",
+    "icons": [
+        {
+            "src": "/metatag.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/metatag.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

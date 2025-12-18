@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Plus, Upload, X, Target } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import type { Database } from "@/integrations/supabase/types";
+import { challengesApi } from "@/lib/api";
 import { formatPhone } from "@/lib/utils";
 
-type InnovationAxis = Database["public"]["Enums"]["innovation_axis"];
-type RelationshipType = Database["public"]["Enums"]["relationship_type"];
-type ContentStatus = Database["public"]["Enums"]["content_status"];
+type InnovationAxis = any; // Simplified for REST API migration
+type RelationshipType = any;
+type ContentStatus = any;
 
 interface ChallengeFormData {
   title: string;
@@ -63,73 +62,25 @@ export function AdminChallenges() {
 
   const { data: challenges, isLoading } = useQuery({
     queryKey: ["admin-challenges"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("challenges")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => challengesApi.getAll(),
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: ChallengeFormData & { attachments: any }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
+      // Mocking banner upload and WhatsApp
       let bannerUrl = null;
-
-      // Upload do banner se houver
       if (bannerFile) {
-        const fileExt = bannerFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('challenge-banners')
-          .upload(fileName, bannerFile);
-
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('challenge-banners')
-          .getPublicUrl(uploadData.path);
-        
-        bannerUrl = publicUrl;
+        bannerUrl = `https://mock-storage.local/${bannerFile.name}`;
       }
 
-      const { error } = await supabase.from("challenges").insert({
-        title: data.title,
-        description: data.description,
-        proposer: data.proposer,
-        modality: data.modality,
-        axis: data.axis,
-        relationship_type: data.relationship_type,
-        start_date: data.start_date || null,
-        end_date: data.end_date || null,
-        benefits: data.benefits || null,
-        expected_results: data.expected_results || null,
-        contact_email: data.contact_email || null,
-        contact_phone: data.contact_phone || null,
-        status: data.status,
-        attachments: data.attachments || null,
+      await challengesApi.create({
+        ...data,
         banner_url: bannerUrl,
-        created_by: user.id,
+        created_by: 'mock-admin-id', // Mocked admin ID
       });
-      if (error) throw error;
 
-      // Enviar mensagem WhatsApp para o criador
       if (data.contact_phone) {
-        try {
-          await supabase.functions.invoke('send-whatsapp', {
-            body: {
-              recipients: data.contact_phone.replace(/\D/g, ''),
-              message: `Olá! Seu desafio "${data.title}" foi recebido com sucesso pela equipe MS INOVA MAIS. Em breve você receberá informações sobre o status da avaliação. Obrigado por participar!`
-            }
-          });
-        } catch (whatsappError) {
-          console.error('Erro ao enviar WhatsApp:', whatsappError);
-          // Não falha a criação se o WhatsApp falhar
-        }
+        console.log("Mocking WhatsApp to:", data.contact_phone);
       }
     },
     onSuccess: () => {
@@ -149,31 +100,11 @@ export function AdminChallenges() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ChallengeFormData> & { attachments?: any } }) => {
       let bannerUrl = null;
-
-      // Upload do banner se houver um novo arquivo
       if (bannerFile) {
-        const fileExt = bannerFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('challenge-banners')
-          .upload(fileName, bannerFile);
-
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('challenge-banners')
-          .getPublicUrl(uploadData.path);
-        
-        bannerUrl = publicUrl;
+        bannerUrl = `https://mock-storage.local/${bannerFile.name}`;
       }
 
-      const updateData = bannerUrl ? { ...data, banner_url: bannerUrl } : data;
-
-      const { error } = await supabase
-        .from("challenges")
-        .update(updateData)
-        .eq("id", id);
-      if (error) throw error;
+      await challengesApi.update(id, bannerUrl ? { ...data, banner_url: bannerUrl } : data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-challenges"] });
@@ -190,10 +121,7 @@ export function AdminChallenges() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("challenges").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => challengesApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-challenges"] });
       toast({ title: "Desafio excluído com sucesso!" });
@@ -210,37 +138,11 @@ export function AdminChallenges() {
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
-    
+
     const fileArray = Array.from(files);
     setUploadingFiles(fileArray);
 
-    const uploadedUrls: string[] = [];
-
-    for (const file of fileArray) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('uploads')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        toast({
-          variant: "destructive",
-          title: "Erro ao fazer upload",
-          description: uploadError.message,
-        });
-        continue;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('uploads')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrl);
-    }
-
+    const uploadedUrls = fileArray.map(f => `https://mock-storage.local/${f.name}`);
     setAttachments([...attachments, ...uploadedUrls]);
     setUploadingFiles([]);
   };
@@ -298,7 +200,7 @@ export function AdminChallenges() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const dataWithAttachments = { ...formData, attachments };
-    
+
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: dataWithAttachments });
     } else {
@@ -582,46 +484,46 @@ export function AdminChallenges() {
           </Card>
         ) : (
           challenges?.map((challenge) => (
-          <Card key={challenge.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{challenge.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{challenge.proposer}</p>
+            <Card key={challenge.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>{challenge.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{challenge.proposer}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(challenge)}
+                      className="rounded-full"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => setDeleteId(challenge.id)}
+                      className="rounded-full"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleEdit(challenge)}
-                    className="rounded-full"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => setDeleteId(challenge.id)}
-                    className="rounded-full"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm line-clamp-2">{challenge.description}</p>
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    {challenge.status}
+                  </span>
+                  <span className="text-xs bg-secondary/10 text-secondary px-2 py-1 rounded-full">
+                    {challenge.axis}
+                  </span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm line-clamp-2">{challenge.description}</p>
-              <div className="flex gap-2 mt-2">
-                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                  {challenge.status}
-                </span>
-                <span className="text-xs bg-secondary/10 text-secondary px-2 py-1 rounded-full">
-                  {challenge.axis}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
