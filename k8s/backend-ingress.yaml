@@ -19,8 +19,6 @@ spec:
     services:
     - name: k0420-prd-ms-inova-mais-back
       port: 3001
-    middlewares:
-    - name: strip-prefix-backend
   
   # Public documentation endpoint (no JWT required)
   - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/api/swagger`)
@@ -31,15 +29,3 @@ spec:
   
   tls:
     certResolver: default
-
----
-# Middleware to strip the prefix
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-prefix-backend
-  namespace: default
-spec:
-  stripPrefix:
-    prefixes:
-      - /api
