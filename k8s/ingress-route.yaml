@@ -5,6 +5,10 @@ kind: IngressRoute
 metadata:
   name: K0418-prd-inovaflow-v1-ingress
   namespace: default # Replace with your assigned namespace
+spec:
+  entryPoints:
+    - web
+    - websecure
   routes:
   - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/`)
     kind: Rule

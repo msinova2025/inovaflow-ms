@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: K0420-prd-inovaflow-backend-v1
+  name: k0420-prd-ms-inova-mais-back
   namespace: default # Replace with your assigned namespace
   labels:
-    app: K0420-prd-inovaflow-backend-v1
+    app: k0420-prd-ms-inova-mais-back
     tier: backend
 spec:
   selector:
-    app: K0420-prd-inovaflow-backend-v1
+    app: k0420-prd-ms-inova-mais-back
   ports:
     - protocol: TCP
       port: 3001
