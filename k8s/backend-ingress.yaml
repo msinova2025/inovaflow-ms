@@ -14,7 +14,7 @@ spec:
     - web
     - websecure
   routes:
-  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/k0420/v1`)
+  - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/api`)
     kind: Rule
     services:
     - name: k0420-prd-ms-inova-mais-back
@@ -42,4 +42,4 @@ metadata:
 spec:
   stripPrefix:
     prefixes:
-      - /k0420/v1
+      - /api
