@@ -5,30 +5,30 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: K0418-prd-inovaflow-backend-v1-ingress
+  name: K0420-prd-inovaflow-backend-v1-ingress
   namespace: default
   annotations:
     # Kong will handle JWT validation via Keycloak
-    konghq.com/plugins: "K0418-jwt-auth"
+    konghq.com/plugins: "K0420-jwt-auth"
 spec:
   entryPoints:
     - web
     - websecure
   routes:
   # Protected API endpoint (requires JWT)
-  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0418/inovaflow/v1`)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0420/inovaflow/v1`)
     kind: Rule
     services:
-    - name: K0418-prd-inovaflow-backend-v1
+    - name: K0420-prd-inovaflow-backend-v1
       port: 3001
     middlewares:
-    - name: strip-prefix
+    - name: strip-prefix-backend
   
   # Public documentation endpoint (no JWT required)
-  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0418/inovaflow/v1/swagger`)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0420/inovaflow/v1/swagger`)
     kind: Rule
     services:
-    - name: K0418-prd-inovaflow-backend-v1
+    - name: K0420-prd-inovaflow-backend-v1
       port: 3001
   
   tls:
@@ -39,9 +39,9 @@ spec:
 apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
-  name: strip-prefix
+  name: strip-prefix-backend
   namespace: default
 spec:
   stripPrefix:
     prefixes:
-      - /K0418/inovaflow/v1
+      - /K0420/inovaflow/v1

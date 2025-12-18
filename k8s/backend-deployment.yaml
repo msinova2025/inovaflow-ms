@@ -2,26 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   # REPLACE KXXXX with your SID
-  name: K0418-prd-inovaflow-backend-v1
+  name: K0420-prd-inovaflow-backend-v1
   namespace: default # Replace with your assigned namespace
   labels:
-    app: K0418-prd-inovaflow-backend-v1
+    app: K0420-prd-inovaflow-backend-v1
     tier: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: K0418-prd-inovaflow-backend-v1
+      app: K0420-prd-inovaflow-backend-v1
   template:
     metadata:
       labels:
-        app: K0418-prd-inovaflow-backend-v1
+        app: K0420-prd-inovaflow-backend-v1
         tier: backend
     spec:
       containers:
       - name: backend
-        # REPLACE K0418 and <time> with actual values
-        image: harbor.sgi.ms.gov.br/<time>/K0418.prd.inovaflow-backend.v1:1.0.0
+        # REPLACE K0420 and <time> with actual values
+        image: harbor.sgi.ms.gov.br/<time>/K0420.prd.inovaflow-backend.v1:1.0.0
         imagePullPolicy: Always
         ports:
         - containerPort: 3001
@@ -33,22 +33,22 @@ spec:
         - name: DB_NAME
           valueFrom:
             secretKeyRef:
-              name: K0418-db-credentials
+              name: K0420-db-credentials
               key: database
         - name: DB_USER
           valueFrom:
             secretKeyRef:
-              name: K0418-db-credentials
+              name: K0420-db-credentials
               key: username
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: K0418-db-credentials
+              name: K0420-db-credentials
               key: password
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: K0418-jwt-secret
+              name: K0420-jwt-secret
               key: secret
         - name: PORT
           value: "3001"
