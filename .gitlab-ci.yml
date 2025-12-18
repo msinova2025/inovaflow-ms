@@ -26,6 +26,7 @@ build:
       --context "${CI_PROJECT_DIR}"
       --dockerfile "${DOCKERFILE}"
       --destination "${IMAGE}:${CI_PIPELINE_IID}"
+      --build-arg "BUILD_MODE=${CI_COMMIT_BRANCH}"
 
 webhook:
   image: harbor.sgi.ms.gov.br/devops/curlimages-curl:7.81.0
