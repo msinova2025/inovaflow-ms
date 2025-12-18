@@ -2,25 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   # REPLACE KXXXX with your SID
-  name: k0420-prd-ms-inova-mais-back
-  namespace: default
+  name: K0420-prd-inovaflow-backend-v1
+  namespace: default # Replace with your assigned namespace
   labels:
-    app: k0420-prd-ms-inova-mais-back
+    app: K0420-prd-inovaflow-backend-v1
     tier: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: k0420-prd-ms-inova-mais-back
+      app: K0420-prd-inovaflow-backend-v1
   template:
     metadata:
       labels:
-        app: k0420-prd-ms-inova-mais-back
+        app: K0420-prd-inovaflow-backend-v1
         tier: backend
     spec:
       containers:
       - name: backend
-        image: harbor.sgi.ms.gov.br/<time>/k0420.prd.ms-inova-mais-back:1.0.0
+        # REPLACE K0420 and <time> with actual values
+        image: harbor.sgi.ms.gov.br/<time>/K0420.prd.inovaflow-backend.v1:1.0.0
         imagePullPolicy: Always
         ports:
         - containerPort: 3001

@@ -1,0 +1,20 @@
+# SETDIG uses Traefik IngressRoute (Custom Resource Definition)
+# Ensure the API Group and Version match the infrastructure (usually traefik.containo.us/v1alpha1)
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: K0418-prd-inovaflow-v1-ingress
+  namespace: default # Replace with your assigned namespace
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(`inovaflow.ms.gov.br`) && PathPrefix(`/`) # Replace with your official FQDN
+    kind: Rule
+    services:
+    - name: K0418-prd-inovaflow-v1
+      port: 80
+  # TLS configuration (if applicable/required by SETDIG usually handled globally or here)
+  tls:
+    certResolver: default
