@@ -49,6 +49,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         cleanupOutdatedCaches: true,
         skipWaiting: true,
+        navigateFallbackDenylist: [/^\/api/],
       },
     }),
   ].filter(Boolean),
