@@ -2,11 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   # Naming Convention: <sid>-<region>-<app_name>-<api_version>
-  name: KXXXX-prd-inovaflow-v1
+  name: K0418-prd-inovaflow-v1
   namespace: default # Replace with your assigned namespace
 spec:
   selector:
-    app: KXXXX-prd-inovaflow-v1
+    app: K0418-prd-inovaflow-v1
   ports:
     - protocol: TCP
       port: 80

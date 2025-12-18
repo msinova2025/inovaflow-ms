@@ -5,30 +5,30 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: KXXXX-prd-inovaflow-backend-v1-ingress
+  name: K0418-prd-inovaflow-backend-v1-ingress
   namespace: default
   annotations:
     # Kong will handle JWT validation via Keycloak
-    konghq.com/plugins: "KXXXX-jwt-auth"
+    konghq.com/plugins: "K0418-jwt-auth"
 spec:
   entryPoints:
     - web
     - websecure
   routes:
   # Protected API endpoint (requires JWT)
-  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/KXXXX/inovaflow/v1`)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0418/inovaflow/v1`)
     kind: Rule
     services:
-    - name: KXXXX-prd-inovaflow-backend-v1
+    - name: K0418-prd-inovaflow-backend-v1
       port: 3001
     middlewares:
     - name: strip-prefix
   
   # Public documentation endpoint (no JWT required)
-  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/KXXXX/inovaflow/v1/swagger`)
+  - match: Host(`api.msinovamais.ms.gov.br`) && PathPrefix(`/K0418/inovaflow/v1/swagger`)
     kind: Rule
     services:
-    - name: KXXXX-prd-inovaflow-backend-v1
+    - name: K0418-prd-inovaflow-backend-v1
       port: 3001
   
   tls:
@@ -44,4 +44,4 @@ metadata:
 spec:
   stripPrefix:
     prefixes:
-      - /KXXXX/inovaflow/v1
+      - /K0418/inovaflow/v1

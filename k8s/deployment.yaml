@@ -3,25 +3,25 @@ kind: Deployment
 metadata:
   # Naming Convention: <sid>-<region>-<app_name>-<api_version>
   # REPLACE KXXXX with your actual SID provided by SETDIG
-  name: KXXXX-prd-inovaflow-v1
+  name: K0418-prd-inovaflow-v1
   namespace: default # Replace with your assigned namespace
   labels:
-    app: KXXXX-prd-inovaflow-v1
+    app: K0418-prd-inovaflow-v1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: KXXXX-prd-inovaflow-v1
+      app: K0418-prd-inovaflow-v1
   template:
     metadata:
       labels:
-        app: KXXXX-prd-inovaflow-v1
+        app: K0418-prd-inovaflow-v1
     spec:
       containers:
-      - name: KXXXX-prd-inovaflow-v1
+      - name: K0418-prd-inovaflow-v1
         # Naming Convention: <registry>/<time>/<sid>.<region>.<app_name>.<api_version>:<app_version>
-        # REPLACE KXXXX and <time> with actual values
-        image: harbor.sgi.ms.gov.br/<time>/KXXXX.prd.inovaflow.v1:1.0.0
+        # REPLACE K0418 and <time> with actual values
+        image: harbor.sgi.ms.gov.br/<time>/K0418.prd.inovaflow.v1:1.0.0
         imagePullPolicy: Always
         ports:
         - containerPort: 80

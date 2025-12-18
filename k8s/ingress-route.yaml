@@ -3,7 +3,7 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: KXXXX-prd-inovaflow-v1-ingress
+  name: K0418-prd-inovaflow-v1-ingress
   namespace: default # Replace with your assigned namespace
 spec:
   entryPoints:
@@ -13,7 +13,7 @@ spec:
   - match: Host(`inovaflow.ms.gov.br`) && PathPrefix(`/`) # Replace with your official FQDN
     kind: Rule
     services:
-    - name: KXXXX-prd-inovaflow-v1
+    - name: K0418-prd-inovaflow-v1
       port: 80
   # TLS configuration (if applicable/required by SETDIG usually handled globally or here)
   tls:
