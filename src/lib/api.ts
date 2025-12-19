@@ -101,9 +101,6 @@ export const authApi = {
     login: (data: any) => api.post('/auth/login', data).then(res => res.data),
     register: (data: any) => api.post('/auth/register', data).then(res => res.data),
     getMe: () => api.get('/auth/me').then(res => res.data),
-    upload: (data: FormData) => api.post('/upload', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    }).then(res => res.data),
 };
 
 export default api;
