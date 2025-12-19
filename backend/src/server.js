@@ -12,6 +12,42 @@ app.use(cors());
 app.use(express.json());
 
 import pool from './db.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer configuration
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir)
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname))
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Not an image! Please upload an image.'), false);
+        }
+    }
+});
 
 // Health check endpoints
 app.get('/health', (req, res) => {
@@ -36,6 +72,7 @@ app.get('/api/status', async (req, res) => {
             api: 'ok',
             database: 'connected',
             schema: schemaOk ? 'initialized' : 'missing_tables',
+            version: 'v1.1.0-uuid-fix', // Prova de deploy
             timestamp: dbCheck.rows[0].now,
             info: schemaOk ? 'All systems operational' : 'Database connected but tables are missing. Please run schema.sql'
         });
@@ -73,6 +110,31 @@ app.use('/api/contents', contentRoutes);
 app.use('/api/how-to-participate', howToParticipateRoutes);
 app.use('/api/program', programRoutes);
 app.use('/api/auth', authRoutes);
+
+// Static file serving for uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Upload endpoint
+app.post('/api/upload', upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Construct the full URL for production/local
+        // In production (behind proxy), we should use the relative path or configure the base URL
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.headers['x-forwarded-host'] || req.get('host');
+        // If behind Traefik strip-prefix, we might need adjustments, but normally /uploads is root-level or mapped.
+        // For simplicity in this mono-repo setup:
+        const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+        res.json({ url: fileUrl });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: 'Failed to upload file' });
+    }
+});
 
 // Error handling
 app.use((err, req, res, next) => {

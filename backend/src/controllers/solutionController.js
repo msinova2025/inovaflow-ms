@@ -189,14 +189,14 @@ export const getSolutionStatuses = async (req, res) => {
 
 export const getMySolutions = async (req, res) => {
     try {
-        // Mocked user_id 1
+        const id = req.user.id;
         const result = await pool.query(`
       SELECT s.*, c.title as challenge_title
       FROM solutions s
       LEFT JOIN challenges c ON s.challenge_id = c.id
       WHERE s.submitted_by = $1
       ORDER BY s.created_at DESC
-    `, ['1']);
+    `, [id]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching my solutions:', error);
