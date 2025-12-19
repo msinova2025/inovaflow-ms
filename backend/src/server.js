@@ -21,11 +21,23 @@ app.get('/health', (req, res) => {
 app.get('/api/status', async (req, res) => {
     try {
         const dbCheck = await pool.query('SELECT NOW()');
+
+        // Adicional: Verificar se as tabelas existem
+        let schemaOk = false;
+        try {
+            await pool.query('SELECT id FROM users LIMIT 1');
+            schemaOk = true;
+        } catch (e) {
+            schemaOk = false;
+        }
+
         res.json({
             status: 'online',
             api: 'ok',
             database: 'connected',
-            timestamp: dbCheck.rows[0].now
+            schema: schemaOk ? 'initialized' : 'missing_tables',
+            timestamp: dbCheck.rows[0].now,
+            info: schemaOk ? 'All systems operational' : 'Database connected but tables are missing. Please run schema.sql'
         });
     } catch (error) {
         res.status(500).json({
