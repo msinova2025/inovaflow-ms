@@ -72,7 +72,7 @@ app.get('/api/status', async (req, res) => {
             api: 'ok',
             database: 'connected',
             schema: schemaOk ? 'initialized' : 'missing_tables',
-            version: 'v1.1.0-uuid-fix', // Prova de deploy
+            version: 'v1.2.0-base64-upload', // Prova de deploy v1.2
             timestamp: dbCheck.rows[0].now,
             info: schemaOk ? 'All systems operational' : 'Database connected but tables are missing. Please run schema.sql'
         });
