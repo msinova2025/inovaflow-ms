@@ -1,4 +1,4 @@
-import express from 'express';
+import { authenticateToken } from '../middleware/auth.js';
 import {
     getSolutionsByChallengeId,
     getSolutionById,
@@ -16,7 +16,7 @@ import {
 const router = express.Router();
 
 router.get('/', getAllSolutions);
-router.get('/my', getMySolutions);
+router.get('/my', authenticateToken, getMySolutions);
 router.get('/challenge/:challengeId', getSolutionsByChallengeId);
 router.get('/:id', getSolutionById);
 router.post('/', createSolution);

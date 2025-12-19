@@ -26,6 +26,15 @@ spec:
     priority: 110
     kind: Rule
     services:
+    services:
+    - name: k0420-prd-ms-inova-mais-back
+      port: 3001
+  
+   # Public uploads endpoint
+  - match: Host(`msinovamais.ms.gov.br`) && PathPrefix(`/uploads`)
+    priority: 110
+    kind: Rule
+    services:
     - name: k0420-prd-ms-inova-mais-back
       port: 3001
   

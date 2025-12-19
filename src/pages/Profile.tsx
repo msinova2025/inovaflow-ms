@@ -71,20 +71,30 @@ export default function Profile() {
 
     try {
       setUploading(true);
-      // Mocking avatar upload for now
-      console.log("Mocking avatar upload:", file.name);
-      const publicUrl = `https://mock-storage.local/${file.name}`;
-      setAvatarUrl(publicUrl);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // We need to use raw axios here or extend our api client to handle uploads seamlessly
+      // Assuming api.ts exports the axios instance `api` or calls
+      // Let's use the raw API URL based on api configuration
+      // Or extend api.ts. Let's try extending api.ts first, but for now inline axios:
+
+      // Since `api` from `@/lib/api` is an axios instance:
+      const response = await authApi.upload(formData);
+
+      setAvatarUrl(response.url);
 
       toast({
         title: "Avatar enviado",
         description: "Imagem carregada com sucesso!",
       });
     } catch (error: any) {
+      console.error("Upload error:", error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar avatar",
-        description: error.message,
+        description: "Falha ao enviar imagem. Tente novamente.",
       });
     } finally {
       setUploading(false);
