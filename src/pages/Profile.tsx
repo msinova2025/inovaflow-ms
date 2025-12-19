@@ -72,31 +72,49 @@ export default function Profile() {
     try {
       setUploading(true);
 
-      const formData = new FormData();
-      formData.append("file", file);
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
 
-      // We need to use raw axios here or extend our api client to handle uploads seamlessly
-      // Assuming api.ts exports the axios instance `api` or calls
-      // Let's use the raw API URL based on api configuration
-      // Or extend api.ts. Let's try extending api.ts first, but for now inline axios:
+      reader.onload = async () => {
+        try {
+          const base64String = reader.result as string;
 
-      // Since `api` from `@/lib/api` is an axios instance:
-      const response = await authApi.upload(formData);
+          if (!profile?.id) throw new Error("Usuário não identificado");
 
-      setAvatarUrl(response.url);
+          // Save directly to user profile via update API
+          await usersApi.update(profile.id, {
+            avatar_url: base64String
+          });
 
-      toast({
-        title: "Avatar enviado",
-        description: "Imagem carregada com sucesso!",
-      });
+          setAvatarUrl(base64String);
+
+          toast({
+            title: "Avatar atualizado",
+            description: "Foto de perfil salva com sucesso!",
+          });
+        } catch (err: any) {
+          console.error("Error saving avatar:", err);
+          toast({
+            variant: "destructive",
+            title: "Erro ao salvar",
+            description: "Falha ao salvar a imagem no perfil.",
+          });
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        setUploading(false);
+        toast({
+          variant: "destructive",
+          title: "Erro na leitura",
+          description: "Não foi possível ler o arquivo de imagem.",
+        });
+      };
+
     } catch (error: any) {
-      console.error("Upload error:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar avatar",
-        description: "Falha ao enviar imagem. Tente novamente.",
-      });
-    } finally {
+      console.error("Upload setup error:", error);
       setUploading(false);
     }
   };
