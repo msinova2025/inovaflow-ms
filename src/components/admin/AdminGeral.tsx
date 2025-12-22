@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { geralApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,24 @@ export default function AdminGeral() {
 
   const [formData, setFormData] = useState<Partial<GeralData>>({});
 
+  useEffect(() => {
+    if (geral) {
+      setFormData({
+        contact_phone: geral.contact_phone,
+        facebook_url: geral.facebook_url,
+        instagram_url: geral.instagram_url,
+        linkedin_url: geral.linkedin_url,
+        youtube_url: geral.youtube_url,
+        ouvidoria_url: geral.ouvidoria_url,
+        transparencia_url: geral.transparencia_url,
+        servicos_url: geral.servicos_url,
+      });
+    }
+  }, [geral]);
+
   const updateMutation = useMutation({
     mutationFn: (data: Partial<GeralData>) => {
-      if (!geral?.id) throw new Error("ID não encontrado");
-      return geralApi.update(geral.id, data);
+      return geralApi.update(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["geral"] });

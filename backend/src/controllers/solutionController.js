@@ -37,14 +37,21 @@ export const getSolutionsByChallengeId = async (req, res) => {
 export const createSolution = async (req, res) => {
     try {
         const {
-            challenge_id, submitted_by, title, description, axis, benefits,
+            challenge_id, title, description, axis, benefits,
             team_name, participant_type, problem_solved, contribution_objectives,
             direct_beneficiaries, detailed_operation, solution_differentials,
             territory_replication, required_resources, validation_prototyping,
             success_indicators, established_partnerships, solution_continuity,
             linkedin_link, instagram_link, portfolio_link, attachments,
-            document_1_url, document_2_url, document_3_url, status_id
+            document_1_url, document_2_url, document_3_url, status_id, status,
+            submitted_by // Keep from body if needed, or override
         } = req.body;
+
+        console.log('Createsolution body keys:', Object.keys(req.body));
+        console.log('Doc 1 length:', document_1_url ? document_1_url.length : 0);
+        console.log('Doc 2 length:', document_2_url ? document_2_url.length : 0);
+
+        const userId = req.user?.id || submitted_by || null;
 
         const result = await pool.query(`
       INSERT INTO solutions (
@@ -54,9 +61,9 @@ export const createSolution = async (req, res) => {
         territory_replication, required_resources, validation_prototyping,
         success_indicators, established_partnerships, solution_continuity,
         linkedin_link, instagram_link, portfolio_link, attachments,
-        document_1_url, document_2_url, document_3_url, status_id
+        document_1_url, document_2_url, document_3_url, status_id, status
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
       RETURNING *
     `, [
             challenge_id, submitted_by, title, description, axis, benefits,
@@ -65,7 +72,7 @@ export const createSolution = async (req, res) => {
             territory_replication, required_resources, validation_prototyping,
             success_indicators, established_partnerships, solution_continuity,
             linkedin_link, instagram_link, portfolio_link, JSON.stringify(attachments || []),
-            document_1_url, document_2_url, document_3_url, status_id
+            document_1_url, document_2_url, document_3_url, status_id, status
         ]);
 
         res.status(201).json(result.rows[0]);
@@ -103,6 +110,9 @@ export const updateSolution = async (req, res) => {
             instagram_link, portfolio_link, attachments, document_1_url,
             document_2_url, document_3_url, status_id, status
         } = req.body;
+
+        console.log(`UpdateSolution payload for ID ${id}:`, Object.keys(req.body));
+        console.log('Doc 1 updated length:', document_1_url ? document_1_url.length : 0);
 
         const result = await pool.query(`
       UPDATE solutions

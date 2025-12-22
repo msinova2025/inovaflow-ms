@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Home, HelpCircle, Info, ExternalLink, User, LogOut, Phone, ArrowLeft } from "lucide-react";
+import { Menu, X, Home, HelpCircle, Info, ExternalLink, User, LogOut, Phone, ArrowLeft, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import logoMsGov from "@/assets/logo-ms-gov-new.png";
 import logoMsInova from "@/assets/logo-ms-inova.png";
@@ -26,13 +26,7 @@ export const Header = () => {
     navigate(-1);
   };
   const handleHomeClick = () => {
-    if (profile?.user_type === 'challenger' || profile?.user_type === 'solver') {
-      navigate('/dashboard');
-    } else if (profile?.user_type === 'admin' || profile?.user_type === 'advanced') {
-      navigate('/dashboard');
-    } else {
-      navigate('/');
-    }
+    navigate('/dashboard');
   };
   const {
     data: geral
@@ -119,8 +113,8 @@ export const Header = () => {
 
           {!isDashboard && <nav className="hidden md:flex items-center gap-4 md:gap-8">
             {user && <button onClick={handleHomeClick} className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
-              <Home className="h-4 w-4" />
-              Início
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
             </button>}
             <Link to="/como-participar" className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
               <HelpCircle className="h-4 w-4" />
@@ -187,8 +181,8 @@ export const Header = () => {
           handleHomeClick();
           setMobileMenuOpen(false);
         }} className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary w-full text-left">
-          <Home className="h-4 w-4" />
-          Início
+          <LayoutDashboard className="h-4 w-4" />
+          Dashboard
         </button>
         <Link to="/como-participar" className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary" onClick={() => setMobileMenuOpen(false)}>
           <HelpCircle className="h-4 w-4" />

@@ -4,6 +4,6 @@ import { getGeral, updateGeral } from '../controllers/geralController.js';
 const router = express.Router();
 
 router.get('/', getGeral);
-router.put('/:id', updateGeral);
+router.put('/', updateGeral);
 
 export default router;

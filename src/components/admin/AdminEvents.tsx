@@ -101,10 +101,13 @@ export default function AdminEvents() {
 
     setUploadingImage(true);
     try {
-      // Mocking image upload
-      const publicUrl = `https://mock-storage.local/events/${file.name}`;
-      setFormData({ ...formData, image_url: publicUrl });
-      toast({ title: "Imagem enviada com sucesso! (MOCK)" });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image_url: reader.result as string });
+        setUploadingImage(false);
+        toast({ title: "Imagem processada com sucesso!" });
+      };
+      reader.readAsDataURL(file);
     } catch (error: any) {
       toast({
         variant: "destructive",

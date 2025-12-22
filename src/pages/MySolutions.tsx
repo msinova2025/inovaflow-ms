@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Lightbulb, Calendar, Edit, Eye, FileText, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
+import { openBase64InNewTab } from "@/lib/utils";
 
 export default function MySolutions() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function MySolutions() {
     in_review: "Em Análise",
     approved: "Aprovada",
     rejected: "Rejeitada",
+    pending: "Em Análise",
   };
 
   const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -34,6 +36,7 @@ export default function MySolutions() {
     in_review: "default",
     approved: "default",
     rejected: "destructive",
+    pending: "secondary",
   };
 
   if (isLoading) {
@@ -192,10 +195,111 @@ export default function MySolutions() {
                 </div>
               )}
 
+              <div className="grid md:grid-cols-2 gap-4">
+                {viewingSolution.team_name && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Nome da Equipe</h3>
+                    <p className="text-muted-foreground">{viewingSolution.team_name}</p>
+                  </div>
+                )}
+                {viewingSolution.participant_type && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Tipo de Participante</h3>
+                    <p className="text-muted-foreground">{viewingSolution.participant_type}</p>
+                  </div>
+                )}
+              </div>
+
               {viewingSolution.detailed_operation && (
                 <div>
                   <h3 className="font-semibold mb-2">Operação Detalhada</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.detailed_operation}</p>
+                </div>
+              )}
+
+              {viewingSolution.contribution_objectives && (
+                <div>
+                  <h3 className="font-semibold mb-2">Contribuição para Objetivos</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.contribution_objectives}</p>
+                </div>
+              )}
+
+              {viewingSolution.direct_beneficiaries && (
+                <div>
+                  <h3 className="font-semibold mb-2">Beneficiários Diretos</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.direct_beneficiaries}</p>
+                </div>
+              )}
+
+              {viewingSolution.solution_differentials && (
+                <div>
+                  <h3 className="font-semibold mb-2">Diferenciais</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.solution_differentials}</p>
+                </div>
+              )}
+
+              {viewingSolution.territory_replication && (
+                <div>
+                  <h3 className="font-semibold mb-2">Replicação</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.territory_replication}</p>
+                </div>
+              )}
+
+              {viewingSolution.required_resources && (
+                <div>
+                  <h3 className="font-semibold mb-2">Recursos Necessários</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.required_resources}</p>
+                </div>
+              )}
+
+              {viewingSolution.validation_prototyping && (
+                <div>
+                  <h3 className="font-semibold mb-2">Validação e Prototipagem</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.validation_prototyping}</p>
+                </div>
+              )}
+
+              {viewingSolution.success_indicators && (
+                <div>
+                  <h3 className="font-semibold mb-2">Indicadores de Sucesso</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.success_indicators}</p>
+                </div>
+              )}
+
+              {viewingSolution.established_partnerships && (
+                <div>
+                  <h3 className="font-semibold mb-2">Parcerias</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.established_partnerships}</p>
+                </div>
+              )}
+
+              {viewingSolution.solution_continuity && (
+                <div>
+                  <h3 className="font-semibold mb-2">Continuidade</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingSolution.solution_continuity}</p>
+                </div>
+              )}
+
+              {(viewingSolution.linkedin_link || viewingSolution.instagram_link || viewingSolution.portfolio_link) && (
+                <div>
+                  <h3 className="font-semibold mb-2">Redes Sociais e Links</h3>
+                  <div className="flex flex-col gap-1">
+                    {viewingSolution.linkedin_link && (
+                      <a href={viewingSolution.linkedin_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block truncate">
+                        LinkedIn: {viewingSolution.linkedin_link}
+                      </a>
+                    )}
+                    {viewingSolution.instagram_link && (
+                      <a href={viewingSolution.instagram_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block truncate">
+                        Instagram: {viewingSolution.instagram_link}
+                      </a>
+                    )}
+                    {viewingSolution.portfolio_link && (
+                      <a href={viewingSolution.portfolio_link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline block truncate">
+                        Portfólio: {viewingSolution.portfolio_link}
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -205,40 +309,34 @@ export default function MySolutions() {
                   <h3 className="font-semibold mb-3">Documentos Anexados</h3>
                   <div className="space-y-2">
                     {viewingSolution.document_1_url && (
-                      <a
-                        href={viewingSolution.document_1_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-primary hover:underline"
+                      <div
+                        onClick={() => openBase64InNewTab(viewingSolution.document_1_url)}
+                        className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
                       >
                         <FileText className="h-4 w-4" />
                         <span>Documento 1</span>
                         <Download className="h-4 w-4 ml-auto" />
-                      </a>
+                      </div>
                     )}
                     {viewingSolution.document_2_url && (
-                      <a
-                        href={viewingSolution.document_2_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-primary hover:underline"
+                      <div
+                        onClick={() => openBase64InNewTab(viewingSolution.document_2_url)}
+                        className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
                       >
                         <FileText className="h-4 w-4" />
                         <span>Documento 2</span>
                         <Download className="h-4 w-4 ml-auto" />
-                      </a>
+                      </div>
                     )}
                     {viewingSolution.document_3_url && (
-                      <a
-                        href={viewingSolution.document_3_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-primary hover:underline"
+                      <div
+                        onClick={() => openBase64InNewTab(viewingSolution.document_3_url)}
+                        className="flex items-center gap-2 text-primary hover:underline cursor-pointer"
                       >
                         <FileText className="h-4 w-4" />
                         <span>Documento 3</span>
                         <Download className="h-4 w-4 ml-auto" />
-                      </a>
+                      </div>
                     )}
                   </div>
                 </div>

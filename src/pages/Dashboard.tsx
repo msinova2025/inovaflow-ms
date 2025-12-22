@@ -4,7 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Target, Lightbulb, Calendar, FileText, Users, LogOut, Home, Settings } from "lucide-react";
+import { Loader2, Target, Lightbulb, Calendar, FileText, Users, LogOut, Home, Settings, Eye } from "lucide-react";
 import { AdminChallenges } from "@/components/admin/AdminChallenges";
 import { AdminSolutions } from "@/components/admin/AdminSolutions";
 import { AdminUsers } from "@/components/admin/AdminUsers";
@@ -14,6 +14,8 @@ import AdminProgram from "@/components/admin/AdminProgram";
 import AdminHowToParticipate from "@/components/admin/AdminHowToParticipate";
 import AdminGeral from "@/components/admin/AdminGeral";
 import AdminSolutionStatuses from "@/components/admin/AdminSolutionStatuses";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminAccesses } from "@/components/admin/AdminAccesses";
 
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useQuery } from "@tanstack/react-query";
@@ -123,6 +125,14 @@ export default function Dashboard() {
     isLink: true,
     path: "/"
   }, {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: Home,
+  }, {
+    id: "accesses",
+    label: "Relatório de Acessos",
+    icon: Eye,
+  }, {
     id: "challenges",
     label: "Desafios",
     icon: Target
@@ -219,7 +229,19 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="bg-card rounded-lg shadow-sm p-6">
+
+
+
+            {/* Admin Dashboard Metrics - Only visible in Dashboard tab */}
+            {activeSection === "dashboard" && <AdminDashboard />}
+
+            <div className="bg-card rounded-lg shadow-sm p-6 mt-8">
+              {activeSection === "dashboard" && (
+                <div className="text-center py-12 text-muted-foreground">
+                  Selecione uma opção no menu lateral para gerenciar o sistema.
+                </div>
+              )}
+              {activeSection === "accesses" && <AdminAccesses />}
               {activeSection === "challenges" && <AdminChallenges />}
               {activeSection === "solutions" && <AdminSolutions />}
               {activeSection === "solution-statuses" && <AdminSolutionStatuses />}
@@ -233,7 +255,7 @@ export default function Dashboard() {
           </main>
         </div>
       </div>
-    </SidebarProvider> : <>
+    </SidebarProvider > : <>
       <Header />
       <main className="flex-1 container py-12">
         <div className="mb-8 flex justify-between items-start">
@@ -361,12 +383,13 @@ export default function Dashboard() {
           </Card>
         </div>
       </main>
-    </>}
+    </>
+    }
 
     <footer className="bg-[#004f9f] py-3 mt-auto">
       <div className="container text-center text-white text-xs">
         © 2024 MS INOVA MAIS - Governo do Estado de Mato Grosso do Sul
       </div>
     </footer>
-  </div>;
+  </div >;
 }

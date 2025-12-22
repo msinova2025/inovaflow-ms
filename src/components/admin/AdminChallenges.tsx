@@ -40,7 +40,7 @@ export function AdminChallenges() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
@@ -67,16 +67,13 @@ export function AdminChallenges() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ChallengeFormData & { attachments: any }) => {
-      // Mocking banner upload and WhatsApp
-      let bannerUrl = null;
-      if (bannerFile) {
-        bannerUrl = `https://mock-storage.local/${bannerFile.name}`;
-      }
+      // Use Base64 banner from preview
+      const bannerUrl = bannerPreview;
 
       await challengesApi.create({
         ...data,
         banner_url: bannerUrl,
-        created_by: 'mock-admin-id', // Mocked admin ID
+        // backend handle req.user.id
       });
 
       if (data.contact_phone) {
@@ -99,10 +96,8 @@ export function AdminChallenges() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ChallengeFormData> & { attachments?: any } }) => {
-      let bannerUrl = null;
-      if (bannerFile) {
-        bannerUrl = `https://mock-storage.local/${bannerFile.name}`;
-      }
+      // Use Base64 banner from preview
+      const bannerUrl = bannerPreview;
 
       await challengesApi.update(id, bannerUrl ? { ...data, banner_url: bannerUrl } : data);
     },
@@ -139,16 +134,63 @@ export function AdminChallenges() {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
 
-    const fileArray = Array.from(files);
-    setUploadingFiles(fileArray);
+    setUploadingFiles(Array.from(files));
+    const newAttachments: any[] = [];
 
-    const uploadedUrls = fileArray.map(f => `https://mock-storage.local/${f.name}`);
-    setAttachments([...attachments, ...uploadedUrls]);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          newAttachments.push({
+            name: file.name,
+            type: file.type,
+            data: reader.result as string
+          });
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    setAttachments([...attachments, ...newAttachments]);
     setUploadingFiles([]);
   };
 
-  const removeAttachment = (url: string) => {
-    setAttachments(attachments.filter(a => a !== url));
+  const removeAttachment = (indexToRemove: number) => {
+    setAttachments(attachments.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleAttachmentClick = (att: any) => {
+    if (typeof att === 'string') {
+      window.open(att, '_blank');
+      return;
+    }
+
+    if (att.data) {
+      // Create a Blob from Base64
+      try {
+        const arr = att.data.split(',');
+        const mime = arr[0].match(/:(.*?);/)![1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      } catch (e) {
+        console.error("Error opening attachment:", e);
+        toast({
+          variant: "destructive",
+          title: "Erro ao abrir arquivo",
+          description: "Formato inválido.",
+        });
+      }
+    }
   };
 
   const resetForm = () => {
@@ -437,15 +479,22 @@ export function AdminChallenges() {
                   />
                   {attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {attachments.map((url, index) => (
-                        <div key={index} className="relative">
-                          <img src={url} alt={`Anexo ${index + 1}`} className="h-20 w-20 object-cover rounded" />
+                      {attachments.map((att, index) => (
+                        <div key={index} className="relative flex items-center p-2 border rounded-lg bg-gray-50 group hover:border-primary/50 transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => handleAttachmentClick(att)}
+                            className="text-xs truncate max-w-[200px] mr-8 text-blue-600 hover:underline cursor-pointer flex items-center gap-2"
+                            title={att.name || 'Anexo'}
+                          >
+                            <span className="font-medium">{att.name || `Anexo ${index + 1}`}</span>
+                          </button>
                           <Button
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                            onClick={() => removeAttachment(url)}
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeAttachment(index)}
                           >
                             <X className="h-3 w-3" />
                           </Button>

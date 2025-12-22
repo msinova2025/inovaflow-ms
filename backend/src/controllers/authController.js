@@ -72,6 +72,32 @@ export const login = async (req, res) => {
         // Remove password from response
         delete user.password;
 
+        // Send WhatsApp Welcome Message (Fire-and-forget)
+        if (user.phone) {
+            (async () => {
+                try {
+                    const phoneNumbersOnly = user.phone.replace(/\D/g, '');
+                    const jid = phoneNumbersOnly.startsWith('55') ? phoneNumbersOnly : `55${phoneNumbersOnly}`;
+
+                    if (jid.length >= 12) { // Basic validation (55 + DDD + 9 + 8 digits = 13, or landline 12)
+                        await fetch('https://9097.bubblewhats.com/send-message', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'YWEwMGViMGE1MmI1NTY4NjI2MWRhMGFh',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                "jid": jid,
+                                "message": `Olá ${user.full_name.split(' ')[0]}, que bom ter você de volta no MS INOVA MAIS!`
+                            })
+                        });
+                    }
+                } catch (wsError) {
+                    console.error('WhatsApp API Error:', wsError.message);
+                }
+            })();
+        }
+
         res.json({
             user,
             token
@@ -85,7 +111,7 @@ export const login = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         // req.user comes from auth middleware (to be implemented)
-        const result = await pool.query('SELECT id, email, full_name, role, phone, organization, cpf_cnpj FROM users WHERE id = $1', [req.user.id]);
+        const result = await pool.query('SELECT id, email, full_name, role, phone, organization, cpf_cnpj, avatar_url FROM users WHERE id = $1', [req.user.id]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }

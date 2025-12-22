@@ -61,7 +61,7 @@ export const createChallenge = async (req, res) => {
             title, description, finalAxis, modality, proposer,
             contact_phone, contact_email, relationship_type,
             start_date, end_date, deadline, expected_results,
-            benefits, JSON.stringify(attachments || []), banner_url, created_by
+            benefits, JSON.stringify(attachments || []), banner_url, req.user.id
         ]);
 
         res.status(201).json(result.rows[0]);
@@ -140,8 +140,7 @@ export const deleteChallenge = async (req, res) => {
 
 export const getMyChallenges = async (req, res) => {
     try {
-        // Mocked user_id 1
-        const result = await pool.query('SELECT * FROM challenges WHERE created_by = $1 ORDER BY created_at DESC', ['1']);
+        const result = await pool.query('SELECT * FROM challenges WHERE created_by = $1 ORDER BY created_at DESC', [req.user.id]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching my challenges:', error);

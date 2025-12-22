@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Send, Upload, X } from "lucide-react";
+import { formatPhone, fileToBase64, openBase64InNewTab } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type InnovationAxis = "inovacao_governo" | "desenvolvimento_tecnologico" | "ia_ml" | "iot" | "sustentabilidade" | "saude_biotecnologia" | "educacao" | "mobilidade";
@@ -78,7 +79,7 @@ export default function CreateChallenge() {
 
   // Carregar dados do desafio existente
   useEffect(() => {
-    if (existingChallenge && !existingChallenge.status) {
+    if (existingChallenge) {
       setFormData({
         title: existingChallenge.title || "",
         description: existingChallenge.description || "",
@@ -90,8 +91,8 @@ export default function CreateChallenge() {
         benefits: existingChallenge.benefits || "",
         contact_email: existingChallenge.contact_email || "",
         contact_phone: existingChallenge.contact_phone || "",
-        start_date: existingChallenge.start_date || "",
-        end_date: existingChallenge.end_date || "",
+        start_date: existingChallenge.start_date ? existingChallenge.start_date.split('T')[0] : "",
+        end_date: existingChallenge.end_date ? existingChallenge.end_date.split('T')[0] : "",
       });
       setBannerUrl(existingChallenge.banner_url || "");
       setAttachments(Array.isArray(existingChallenge.attachments) ? existingChallenge.attachments : []);
@@ -131,24 +132,39 @@ export default function CreateChallenge() {
   }, [userData, navigate, toast]);
 
   const handleBannerUpload = async (file: File) => {
-    // Mocking banner upload for now
-    console.log("Mocking banner upload:", file.name);
-    setBannerUrl(`https://mock-storage.local/${file.name}`);
-    toast({ title: "Banner enviado (mock)!" });
+    try {
+      const base64 = await fileToBase64(file);
+      setBannerUrl(base64);
+      toast({ title: "Banner carregado!" });
+    } catch (error) {
+      console.error("Error converting banner:", error);
+      toast({ title: "Erro ao carregar banner", variant: "destructive" });
+    }
   };
 
   const handleAttachmentUpload = async (files: FileList | null) => {
     if (!files) return;
-    const newAttachments = Array.from(files).map(file => ({
-      name: file.name,
-      url: `https://mock-storage.local/${file.name}`
-    }));
-    setAttachments([...attachments, ...newAttachments]);
-    toast({ title: "Anexos enviados (mock)!" });
+
+    try {
+      const newAttachments = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const base64 = await fileToBase64(file);
+        newAttachments.push({
+          name: file.name,
+          url: base64
+        });
+      }
+      setAttachments([...attachments, ...newAttachments]);
+      toast({ title: "Anexos carregados!" });
+    } catch (error) {
+      console.error("Error processing attachments:", error);
+      toast({ title: "Erro ao carregar anexos", variant: "destructive" });
+    }
   };
 
   const saveMutation = useMutation({
-    mutationFn: async (status: "draft" | "pending") => {
+    mutationFn: async (status: "draft" | "open") => {
       const challengeData = {
         ...formData,
         banner_url: bannerUrl || null,
@@ -167,7 +183,7 @@ export default function CreateChallenge() {
       queryClient.invalidateQueries({ queryKey: ["challenges"] });
       queryClient.invalidateQueries({ queryKey: ["my-challenges"] });
 
-      if (status === "pending") {
+      if (status === "open") {
         localStorage.removeItem(`challenge-draft-${id || "new"}`);
         toast({
           title: "Desafio enviado com sucesso!",
@@ -222,7 +238,7 @@ export default function CreateChallenge() {
 
   const confirmSubmit = () => {
     setIsSubmitting(true);
-    saveMutation.mutate("pending", {
+    saveMutation.mutate("open", {
       onSettled: () => {
         setIsSubmitting(false);
         setShowSubmitDialog(false);
@@ -451,7 +467,12 @@ export default function CreateChallenge() {
                     <div className="space-y-2">
                       {attachments.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                          <span className="text-sm truncate flex-1">{file.name}</span>
+                          <span
+                            className="text-sm truncate flex-1 cursor-pointer hover:underline text-primary"
+                            onClick={() => openBase64InNewTab(file.url)}
+                          >
+                            {file.name}
+                          </span>
                           <Button
                             type="button"
                             variant="ghost"

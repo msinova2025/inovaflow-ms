@@ -1,3 +1,4 @@
+import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import {
     getSolutionsByChallengeId,
@@ -18,13 +19,15 @@ const router = express.Router();
 router.get('/', getAllSolutions);
 router.get('/my', authenticateToken, getMySolutions);
 router.get('/challenge/:challengeId', getSolutionsByChallengeId);
-router.get('/:id', getSolutionById);
-router.post('/', createSolution);
-router.put('/:id', updateSolution);
-router.patch('/:id/status', updateSolutionStatus);
+
 router.get('/statuses', getSolutionStatuses);
 router.post('/statuses', createSolutionStatus);
 router.put('/statuses/:id', updateSolutionStatusInfo);
 router.delete('/statuses/:id', deleteSolutionStatus);
+
+router.post('/', authenticateToken, createSolution);
+router.put('/:id', updateSolution);
+router.patch('/:id/status', updateSolutionStatus);
+router.get('/:id', getSolutionById);
 
 export default router;

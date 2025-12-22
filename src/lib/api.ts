@@ -46,6 +46,8 @@ export const solutionsApi = {
 
 export const statsApi = {
     get: () => api.get('/stats').then(res => res.data),
+    getAccessLogs: (params?: any) => api.get('/stats/access', { params }).then(res => res.data),
+    logAccess: (data: any) => api.post('/stats/access', data).then(res => res.data),
 };
 
 export const newsApi = {
@@ -66,7 +68,7 @@ export const eventsApi = {
 
 export const geralApi = {
     get: () => api.get('/geral').then(res => res.data),
-    update: (id: string, data: any) => api.put(`/geral/${id}`, data).then(res => res.data),
+    update: (data: any) => api.put(`/geral`, data).then(res => res.data),
 };
 
 export const solutionStatusesApi = {

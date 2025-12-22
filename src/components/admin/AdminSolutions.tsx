@@ -39,6 +39,9 @@ interface SolutionFormData {
   linkedin_link?: string;
   instagram_link?: string;
   portfolio_link?: string;
+  document_1_url?: string;
+  document_2_url?: string;
+  document_3_url?: string;
 }
 
 export function AdminSolutions() {
@@ -47,7 +50,7 @@ export function AdminSolutions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
   const [sendWhatsApp, setSendWhatsApp] = useState(false);
 
   const [formData, setFormData] = useState<SolutionFormData>({
@@ -73,11 +76,14 @@ export function AdminSolutions() {
     linkedin_link: "",
     instagram_link: "",
     portfolio_link: "",
+    document_1_url: "",
+    document_2_url: "",
+    document_3_url: "",
   });
 
   const { data: solutions, isLoading } = useQuery({
     queryKey: ["admin-solutions"],
-    queryFn: () => solutionsApi.getAll(), // You might need to add a generic getAll for admin
+    queryFn: () => solutionsApi.getAll(),
   });
 
   const { data: challenges } = useQuery({
@@ -92,10 +98,8 @@ export function AdminSolutions() {
 
   const createMutation = useMutation({
     mutationFn: async (data: SolutionFormData & { attachments: any }) => {
-      await solutionsApi.create({
-        ...data,
-        submitted_by: 'mock-user-id', // Mocked user ID
-      });
+      // Backend should use req.user.id
+      await solutionsApi.create(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-solutions"] });
@@ -134,7 +138,7 @@ export function AdminSolutions() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => solutionsApi.delete(id), // Need to implement delete in solutionsApi if missing
+    mutationFn: (id: string) => solutionsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-solutions"] });
       toast({ title: "Solução excluída com sucesso!" });
@@ -149,15 +153,66 @@ export function AdminSolutions() {
     },
   });
 
-  const handleFileUpload = async (files: FileList | null) => {
-    if (!files) return;
-    const fileArray = Array.from(files);
-    const uploadedUrls = fileArray.map(f => `https://mock-storage.local/${f.name}`);
-    setAttachments([...attachments, ...uploadedUrls]);
+  const handleFileSelect = async (field: keyof SolutionFormData, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const removeAttachment = (url: string) => {
-    setAttachments(attachments.filter(a => a !== url));
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files) return;
+
+    const newAttachments: any[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      await new Promise((resolve) => {
+        reader.onloadend = () => {
+          newAttachments.push({
+            name: file.name,
+            type: file.type,
+            data: reader.result as string
+          });
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    setAttachments([...attachments, ...newAttachments]);
+  };
+
+  const removeAttachment = (indexToRemove: number) => {
+    setAttachments(attachments.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleAttachmentClick = (att: any) => {
+    if (typeof att === 'string') {
+      window.open(att, '_blank');
+      return;
+    }
+    if (att.data) {
+      try {
+        const arr = att.data.split(',');
+        const mime = arr[0].match(/:(.*?);/)![1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      } catch (e) {
+        console.error("Error opening attachment:", e);
+        toast({ variant: "destructive", title: "Erro", description: "Falha ao abrir arquivo." });
+      }
+    }
   };
 
   const resetForm = () => {
@@ -184,12 +239,56 @@ export function AdminSolutions() {
       linkedin_link: "",
       instagram_link: "",
       portfolio_link: "",
+      document_1_url: "",
+      document_2_url: "",
+      document_3_url: "",
     });
     setAttachments([]);
     setSendWhatsApp(false);
     setEditingId(null);
     setIsDialogOpen(false);
   };
+
+  // Helper to open Base64 data in new tab
+  const openBase64InNewTab = (dataUrl: string) => {
+    try {
+      const arr = dataUrl.split(',');
+      const match = arr[0].match(/:(.*?);/);
+      const mime = match ? match[1] : 'application/octet-stream';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    } catch (e) {
+      console.error("Error opening file:", e);
+      toast({ variant: "destructive", title: "Erro", description: "Falha ao abrir arquivo." });
+    }
+  };
+
+  // Render helper for file input with clear button
+  const renderFileInput = (id: keyof SolutionFormData, label: string) => (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex gap-2 items-center">
+        <Input
+          id={id}
+          type="file"
+          onChange={(e) => handleFileSelect(id, e)}
+          className="h-12"
+        />
+        {formData[id] && (
+          <Button type="button" variant="outline" size="sm" onClick={() => openBase64InNewTab(formData[id] as string)}>
+            Ver
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
   const handleEdit = (solution: any) => {
     setFormData({
@@ -215,6 +314,9 @@ export function AdminSolutions() {
       linkedin_link: solution.linkedin_link || "",
       instagram_link: solution.instagram_link || "",
       portfolio_link: solution.portfolio_link || "",
+      document_1_url: solution.document_1_url || "",
+      document_2_url: solution.document_2_url || "",
+      document_3_url: solution.document_3_url || "",
     });
     setAttachments(solution.attachments || []);
     setSendWhatsApp(false);
@@ -232,7 +334,7 @@ export function AdminSolutions() {
         id: editingId,
         data: dataWithAttachments,
         oldSolutionStatusId: solution?.solution_status_id,
-        phone: solution?.celular_envio,
+        phone: solution?.celular_envio, // Adjust property name if needed
         sendWhatsApp: sendWhatsApp
       });
     } else {
@@ -322,6 +424,14 @@ export function AdminSolutions() {
                   required
                   rows={3}
                 />
+              </div>
+
+              {/* Textareas moved to allow space for documents */}
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {renderFileInput("document_1_url", "Documento 1 (PDF/Imagem)")}
+                {renderFileInput("document_2_url", "Documento 2 (PDF/Imagem)")}
+                {renderFileInput("document_3_url", "Documento 3 (PDF/Imagem)")}
               </div>
 
               <div>
@@ -550,7 +660,7 @@ export function AdminSolutions() {
               )}
 
               <div>
-                <Label htmlFor="attachments">Anexos</Label>
+                <Label htmlFor="attachments">Anexos Extras</Label>
                 <div className="space-y-2">
                   <Input
                     id="attachments"
@@ -560,15 +670,22 @@ export function AdminSolutions() {
                   />
                   {attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {attachments.map((url, index) => (
-                        <div key={index} className="relative">
-                          <img src={url} alt={`Anexo ${index + 1}`} className="h-20 w-20 object-cover rounded" />
+                      {attachments.map((att, index) => (
+                        <div key={index} className="relative flex items-center p-2 border rounded-lg bg-gray-50 group hover:border-primary/50 transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => handleAttachmentClick(att)}
+                            className="text-xs truncate max-w-[200px] mr-8 text-blue-600 hover:underline cursor-pointer flex items-center gap-2"
+                            title={att.name || 'Anexo'}
+                          >
+                            <span className="font-medium">{att.name || `Anexo ${index + 1}`}</span>
+                          </button>
                           <Button
                             type="button"
                             variant="destructive"
                             size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                            onClick={() => removeAttachment(url)}
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeAttachment(index)}
                           >
                             <X className="h-3 w-3" />
                           </Button>

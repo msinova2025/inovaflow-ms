@@ -1,5 +1,12 @@
--- MS INOVA MAIS Database Schema
--- Optimized for PostgreSQL 16 (SETDIG compatible)
+-- MS INOVA MAIS - Production Deployment Script
+-- Includes:
+-- 1. Full Database Schema (Tables, Types, Triggers)
+-- 2. Initial Data (Geral settings, Admin User)
+-- 3. Access Permissions (GRANTS) for Application Users
+
+-- ==================================================================================
+-- PART 1: SCHEMA AND DATA
+-- ==================================================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -138,18 +145,6 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Access Logs table (Page Views)
-CREATE TABLE IF NOT EXISTS access_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id), -- Nullable (visitor)
-  path TEXT NOT NULL,
-  method TEXT DEFAULT 'GET',
-  ip_address TEXT,
-  user_agent TEXT,
-  timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  metadata JSONB DEFAULT '{}'::jsonb -- Screen, Language, Referrer
-);
-
 -- Site Settings (Geral)
 CREATE TABLE IF NOT EXISTS geral (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -196,15 +191,41 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_solutions_updated_at BEFORE UPDATE ON solutions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_news_updated_at BEFORE UPDATE ON news FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_geral_updated_at BEFORE UPDATE ON geral FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_program_info_updated_at BEFORE UPDATE ON program_info FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_how_to_participate_updated_at BEFORE UPDATE ON how_to_participate FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_solution_statuses_updated_at BEFORE UPDATE ON solution_statuses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$ BEGIN
+    CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_solutions_updated_at BEFORE UPDATE ON solutions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_news_updated_at BEFORE UPDATE ON news FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_geral_updated_at BEFORE UPDATE ON geral FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_program_info_updated_at BEFORE UPDATE ON program_info FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_how_to_participate_updated_at BEFORE UPDATE ON how_to_participate FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    CREATE TRIGGER update_solution_statuses_updated_at BEFORE UPDATE ON solution_statuses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- Initial Data
 INSERT INTO geral (id, contact_phone) 
@@ -212,6 +233,7 @@ VALUES (uuid_generate_v4(), '(67) 3318-3500')
 ON CONFLICT DO NOTHING;
 
 -- Initial Admin User (password: admin123)
+-- Hash generated via bcrypt: $2b$10$NxlmvzymhqkHuAsy0MTW8OzuYElwfEUUbtCYDChFbIgoGBgz1w8PC
 INSERT INTO users (id, email, password, full_name, role, organization)
 VALUES (
     uuid_generate_v4(), 
@@ -222,3 +244,28 @@ VALUES (
     'Governo MS'
 ) ON CONFLICT (email) DO NOTHING;
 
+
+-- ==================================================================================
+-- PART 2: PERMISSIONS (EXECUTE BASED ON ENVIRONMENT)
+-- ==================================================================================
+
+DO $$ 
+BEGIN
+    -- Grant permissions for PRODUCTION user if it exists
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'user_inova_prd') THEN
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO user_inova_prd;
+        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO user_inova_prd;
+        GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO user_inova_prd;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO user_inova_prd;
+        RAISE NOTICE 'Permissions granted to user_inova_prd';
+    END IF;
+
+    -- Grant permissions for HOMOLOGATION user if it exists
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'user_inova_hml') THEN
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO user_inova_hml;
+        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO user_inova_hml;
+        GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO user_inova_hml;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO user_inova_hml;
+        RAISE NOTICE 'Permissions granted to user_inova_hml';
+    END IF;
+END $$;

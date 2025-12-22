@@ -26,6 +26,7 @@ import ReceivedSolutions from "./pages/ReceivedSolutions";
 import CreateChallenge from "./pages/CreateChallenge";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieBanner from "./components/CookieBanner";
+import { AccessLogger } from "./components/AccessLogger";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +37,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
+        <ScrollToTop />
         <CookieBanner />
+        <AccessLogger />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />

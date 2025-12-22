@@ -24,12 +24,20 @@ export default function MyChallenges() {
     draft: "Rascunho",
     pending: "Pendente",
     approved: "Aprovado",
+    draft: "Rascunho",
+    pending: "Pendente",
+    open: "Aberto",
+    approved: "Aprovado",
     rejected: "Rejeitado",
   };
 
   const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     draft: "outline",
     pending: "secondary",
+    approved: "default",
+    draft: "outline",
+    pending: "secondary",
+    open: "default",
     approved: "default",
     rejected: "destructive",
   };
@@ -222,18 +230,16 @@ export default function MyChallenges() {
                 <div>
                   <h3 className="font-semibold mb-3">Anexos</h3>
                   <div className="space-y-2">
-                    {viewingChallenge.attachments.map((url: string, index: number) => (
-                      <a
+                    {viewingChallenge.attachments.map((file: any, index: number) => (
+                      <div
                         key={index}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-primary hover:underline"
+                        onClick={() => typeof file === 'string' ? window.open(file, '_blank') : window.open(file.url, '_blank')}
+                        className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
                       >
-                        <FileText className="h-4 w-4" />
-                        <span>Anexo {index + 1}</span>
-                        <Download className="h-4 w-4 ml-auto" />
-                      </a>
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="flex-1 text-sm font-medium">{file.name || `Anexo ${index + 1}`}</span>
+                        <Download className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     ))}
                   </div>
                 </div>

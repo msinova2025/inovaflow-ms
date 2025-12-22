@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { fileToBase64, openBase64InNewTab } from "@/lib/utils";
 
 export default function ChallengeDetail() {
   const { id } = useParams();
@@ -143,9 +144,10 @@ export default function ChallengeDetail() {
       return;
     }
 
-    if (!solutionData.title || !solutionData.description) {
+    if (!solutionData.title) {
       toast({
-        title: "Preencha título e descrição",
+        title: "Título obrigatório",
+        description: "Preencha pelo menos o título para salvar o rascunho.",
         variant: "destructive",
       });
       return;
@@ -153,54 +155,37 @@ export default function ChallengeDetail() {
 
     setIsSubmitting(true);
     try {
-      // Upload dos documentos se houver novos
-      let doc1Url = existingSolution?.document_1_url || null;
-      let doc2Url = existingSolution?.document_2_url || null;
-      let doc3Url = existingSolution?.document_3_url || null;
+      // Upload dos documentos via Base64
+      const doc1Url = documents.doc1 ? await fileToBase64(documents.doc1) : existingSolution?.document_1_url;
+      const doc2Url = documents.doc2 ? await fileToBase64(documents.doc2) : existingSolution?.document_2_url;
+      const doc3Url = documents.doc3 ? await fileToBase64(documents.doc3) : existingSolution?.document_3_url;
 
-      if (documents.doc1) {
-        console.log("Mocking upload for doc1:", documents.doc1.name);
-        doc1Url = `https://mock-storage.local/${documents.doc1.name}`;
-      }
-
-      if (documents.doc2) {
-        console.log("Mocking upload for doc2:", documents.doc2.name);
-        doc2Url = `https://mock-storage.local/${documents.doc2.name}`;
-      }
-
-      if (documents.doc3) {
-        console.log("Mocking upload for doc3:", documents.doc3.name);
-        doc3Url = `https://mock-storage.local/${documents.doc3.name}`;
-      }
+      const payload = {
+        ...solutionData,
+        challenge_id: id,
+        axis: challenge?.axis,
+        submitted_by: session?.user.id,
+        status: 'draft',
+        document_1_url: doc1Url,
+        document_2_url: doc2Url,
+        document_3_url: doc3Url,
+      };
 
       if (solutionId) {
-        // Atualizar solução existente via REST API
-        await solutionsApi.update(solutionId, {
-          title: solutionData.title,
-          description: solutionData.description,
-          benefits: solutionData.benefits,
-          status: 'draft',
-          // Outros campos podem ser adicionados conforme necessário no backend
-        });
+        await solutionsApi.update(solutionId, payload);
       } else {
-        // Criar nova solução via REST API
-        await solutionsApi.create({
-          challenge_id: id,
-          submitted_by: session?.user.id, // Mocked user id if no session
-          title: solutionData.title,
-          description: solutionData.description,
-          benefits: solutionData.benefits,
-          status: 'draft',
-        });
+        await solutionsApi.create(payload);
       }
 
       toast({
         title: solutionId ? "Rascunho atualizado!" : "Rascunho salvo!",
         description: "Você pode continuar editando mais tarde.",
       });
+
+      // Limpar rascunho local apenas se salvo com sucesso
       localStorage.removeItem(`solution-draft-${id}`);
       setIsDialogOpen(false);
-      navigate("/minhas-solucoes");
+      navigate("/minhas-solucoes"); // Redirecionar para evitar edições conflitantes
     } catch (error) {
       console.error("Error saving draft:", error);
       toast({
@@ -216,8 +201,7 @@ export default function ChallengeDetail() {
   const handleSubmitSolution = async () => {
     if (!session) {
       toast({
-        title: "Faça login para enviar uma solução",
-        description: "Você precisa estar autenticado para propor soluções.",
+        title: "Faça login para enviar",
         variant: "destructive",
       });
       navigate("/auth");
@@ -226,7 +210,7 @@ export default function ChallengeDetail() {
 
     if (challenge?.created_by === session.user.id && !solutionId) {
       toast({
-        title: "Você criou este desafio",
+        title: "Ação não permitida",
         description: "O criador do desafio não pode enviar soluções para o próprio desafio.",
         variant: "destructive",
       });
@@ -235,7 +219,7 @@ export default function ChallengeDetail() {
 
     if (!solutionData.title || !solutionData.description) {
       toast({
-        title: "Preencha os campos obrigatórios",
+        title: "Campos obrigatórios",
         description: "Título e descrição são obrigatórios.",
         variant: "destructive",
       });
@@ -245,69 +229,40 @@ export default function ChallengeDetail() {
     setIsSubmitting(true);
 
     try {
-      // Upload dos documentos (MOCKED)
-      let doc1Url = existingSolution?.document_1_url || null;
-      let doc2Url = existingSolution?.document_2_url || null;
-      let doc3Url = existingSolution?.document_3_url || null;
+      // Upload dos documentos via Base64
+      const doc1Url = documents.doc1 ? await fileToBase64(documents.doc1) : existingSolution?.document_1_url;
+      const doc2Url = documents.doc2 ? await fileToBase64(documents.doc2) : existingSolution?.document_2_url;
+      const doc3Url = documents.doc3 ? await fileToBase64(documents.doc3) : existingSolution?.document_3_url;
+
+      const payload = {
+        ...solutionData,
+        challenge_id: id,
+        axis: challenge?.axis,
+        submitted_by: session?.user.id,
+        status: 'submitted',
+        document_1_url: doc1Url,
+        document_2_url: doc2Url,
+        document_3_url: doc3Url,
+      };
 
       if (solutionId) {
-        // Atualizar solução existente via REST API
-        await solutionsApi.update(solutionId, {
-          title: solutionData.title,
-          description: solutionData.description,
-          benefits: solutionData.benefits,
-          status: 'submitted',
-        });
+        await solutionsApi.update(solutionId, payload);
       } else {
-        // Criar nova solução via REST API
-        await solutionsApi.create({
-          challenge_id: id,
-          submitted_by: session?.user.id,
-          title: solutionData.title,
-          description: solutionData.description,
-          benefits: solutionData.benefits,
-          status: 'submitted',
-        });
+        await solutionsApi.create(payload);
       }
 
-      // Enviar mensagem WhatsApp (MOCKED)
-      console.log("Mocking WhatsApp message to phone");
-
       toast({
-        title: solutionId ? "Solução atualizada com sucesso!" : "Solução enviada com sucesso!",
-        description: solutionId ? "Sua solução foi atualizada." : "Sua proposta foi enviada e está aguardando avaliação.",
+        title: solutionId ? "Solução atualizada!" : "Solução enviada!",
+        description: "Sua proposta foi enviada e está aguardando avaliação.",
       });
 
       localStorage.removeItem(`solution-draft-${id}`);
       setIsDialogOpen(false);
       navigate("/minhas-solucoes");
-
-      setSolutionData({
-        title: "",
-        description: "",
-        benefits: "",
-        team_name: "",
-        participant_type: "",
-        problem_solved: "",
-        contribution_objectives: "",
-        direct_beneficiaries: "",
-        detailed_operation: "",
-        solution_differentials: "",
-        territory_replication: "",
-        required_resources: "",
-        validation_prototyping: "",
-        success_indicators: "",
-        established_partnerships: "",
-        solution_continuity: "",
-        linkedin_link: "",
-        instagram_link: "",
-        portfolio_link: "",
-      });
-      setDocuments({ doc1: null, doc2: null, doc3: null });
     } catch (error) {
       console.error("Error submitting solution:", error);
       toast({
-        title: "Erro ao enviar solução",
+        title: "Erro ao enviar",
         description: "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
@@ -738,15 +693,13 @@ export default function ChallengeDetail() {
                           <Label htmlFor="doc1">Documento 1</Label>
                           {existingSolution?.document_1_url && (
                             <div className="mb-2">
-                              <a
-                                href={existingSolution.document_1_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              <div
+                                onClick={() => openBase64InNewTab(existingSolution.document_1_url)}
+                                className="text-sm text-primary hover:underline flex items-center gap-2 cursor-pointer"
                               >
                                 <FileText className="h-4 w-4" />
                                 Documento atual (clique para visualizar)
-                              </a>
+                              </div>
                             </div>
                           )}
                           <Input
@@ -766,15 +719,13 @@ export default function ChallengeDetail() {
                           <Label htmlFor="doc2">Documento 2</Label>
                           {existingSolution?.document_2_url && (
                             <div className="mb-2">
-                              <a
-                                href={existingSolution.document_2_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              <div
+                                onClick={() => openBase64InNewTab(existingSolution.document_2_url)}
+                                className="text-sm text-primary hover:underline flex items-center gap-2 cursor-pointer"
                               >
                                 <FileText className="h-4 w-4" />
                                 Documento atual (clique para visualizar)
-                              </a>
+                              </div>
                             </div>
                           )}
                           <Input
@@ -794,15 +745,13 @@ export default function ChallengeDetail() {
                           <Label htmlFor="doc3">Documento 3</Label>
                           {existingSolution?.document_3_url && (
                             <div className="mb-2">
-                              <a
-                                href={existingSolution.document_3_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline flex items-center gap-2"
+                              <div
+                                onClick={() => openBase64InNewTab(existingSolution.document_3_url)}
+                                className="text-sm text-primary hover:underline flex items-center gap-2 cursor-pointer"
                               >
                                 <FileText className="h-4 w-4" />
                                 Documento atual (clique para visualizar)
-                              </a>
+                              </div>
                             </div>
                           )}
                           <Input
