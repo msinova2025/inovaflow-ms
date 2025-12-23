@@ -23,18 +23,12 @@ export default function MyChallenges() {
   const statusLabels: Record<string, string> = {
     draft: "Rascunho",
     pending: "Pendente",
-    approved: "Aprovado",
-    draft: "Rascunho",
-    pending: "Pendente",
     open: "Aberto",
     approved: "Aprovado",
     rejected: "Rejeitado",
   };
 
   const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-    draft: "outline",
-    pending: "secondary",
-    approved: "default",
     draft: "outline",
     pending: "secondary",
     open: "default",
